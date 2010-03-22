@@ -1,0 +1,14 @@
+#!/usr/bin/python
+import gtk
+import sys
+
+from pysheng import gui
+
+def main(args):
+    book_url = (args[0] if args else None)
+    widgets, state = gui.run(book_url)
+    widgets.window.show_all()
+    gtk.main()
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
