@@ -37,15 +37,16 @@ class Job:
                 continue
             elif isinstance(task_generator_or_result, Task):
                 task = task_generator_or_result
-                break
+                self._start_task(task, generator)
+                return
             else: 
                 self.generators.remove(generator)
                 generator.close()
                 if not self.generators:
-                    raise RuntimeError, "Stack has no generators" 
+                    raise RuntimeError, "Unexpected state: job has no generators" 
                 generator = self.generators[-1]
                 method, result = "send", task_generator_or_result
-        self._start_task(task, generator)
+        
 
 class TaskError(Exception):
     pass
