@@ -103,7 +103,6 @@ def get_info(widgets, url, opener):
     debug("Info: attribution=%s" % info["attribution"]) 
     debug("Info: title=%s" % info["title"])
     debug("Info: total pages=%s" % len(info["page_ids"]))
-
     set_book_info(widgets, info)        
     yield info
 
