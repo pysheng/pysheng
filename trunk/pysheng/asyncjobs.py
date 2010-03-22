@@ -127,7 +127,15 @@ class Job:
                 generator = self.generators[-1]
                 method, result = "send", None
                 continue                
-            except:
+            except Exception, exc:
+                # propagate the exception through the generators stack till it's catched
+                for generator in reversed(self.generators[:-1]):
+                    try:
+                        generator.throw(exc)
+                        break
+                    except:
+                        pass
+                del self.generators[:]
                 self._state = "finished" # maybe "error"?
                 raise
             if isinstance(new_task_or_generator, types.GeneratorType):
