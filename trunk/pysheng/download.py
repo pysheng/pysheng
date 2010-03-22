@@ -96,7 +96,8 @@ def download_book(url, page_start=0, page_end=None):
     cover_html = download(cover_url, opener=opener)
     info = get_info(cover_html)
     page_ids = itertools.islice(info["page_ids"], page_start, page_end)
-    for page, page_id in enumerate(page_ids, page_start):
+    for page, page_id in enumerate(page_ids):
+        page += page_start
         page_url = get_page_url(info["prefix"], page_id)
         page_html = download(page_url, opener=opener)
         image_url = get_image_url_from_page(page_html)
@@ -120,7 +121,7 @@ def main(args):
         namespace = dict(title=info["title"], attribution=info["attribution"])
         output_file = ((image_file_template+".png") % 
           dict(namespace, page=page+1)).encode("utf-8")
-        open(output_file, "w").write(image_data)
+        open(output_file, "wb").write(image_data)
         print output_file
 
   
