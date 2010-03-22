@@ -90,44 +90,48 @@ def on_elapsed(widgets, name, elapsed, total):
     msg = "Downloading %s..." % name    
     widgets.progress_current.set_text("Downloading %s..." % name)
 
+def get_info(widgets, url, opener):
+    debug = widgets.debug
+    html = yield asyncjobs.ProgressDownloadThreadedTask(
+        url, opener, headers=HEADERS, 
+        elapsed_cb=functools.partial(on_elapsed, widgets, "info"))
+    try:
+        info = pysheng.get_info(html)
+    except ValueError, detail:
+        debug("Error parsing page HTML: %s" % str(detail))
+        raise
+    debug("Info: attribution=%s" % info["attribution"]) 
+    debug("Info: title=%s" % info["title"])
+    debug("Info: total pages=%s" % len(info["page_ids"]))
+
+    set_book_info(widgets, info)        
+    yield info
+
 def download_book(widgets, state, url, page_start=0, page_end=None):
     """Yield (info, page, image_data) for pages from page_start to page_end"""
-    set_sensitivity(widgets, start=False, pause=True, cancel=True,
-        browse_destdir=False, page_start=False, page_end=False)
-    destdir = widgets.destdir.get_text()
-    debug = widgets.debug
-    set_sensitivity(widgets, check=False, savepdf=False)
-    debug("Output directory: %s" % destdir)
-    debug("Page_start: %s, Page end: %s" % 
-        (adj_int(page_start, +1, 1), adj_int(page_end, +1, "last")))
-    opener = lib.get_cookies_opener()
-    book_id = pysheng.get_id_from_string(url)
-    debug("Book ID: %s" % book_id)
-    cover_url = pysheng.get_cover_url(book_id)
-    widgets.progress_all.set_fraction(0.0)
-    widgets.progress_all.set_text('') 
-    widgets.progress_current.set_pulse_step(0.005)
-    state.downloaded_images = None
     try:
-        html = yield asyncjobs.ProgressDownloadThreadedTask(
-            cover_url, opener, headers=HEADERS, 
-            elapsed_cb=functools.partial(on_elapsed, widgets, "info"))
-        try:
-            info = pysheng.get_info(html)
-        except ValueError, detail:
-            debug("Error parsing page HTML: %s" % str(detail))
-            raise
-        debug("Info: attribution=%s" % info["attribution"]) 
-        debug("Info: title=%s" % info["title"])
-        debug("Info: total pages=%s" % len(info["page_ids"]))
-        page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]
-
-        set_book_info(widgets, info)        
+        set_sensitivity(widgets, start=False, pause=True, cancel=True,
+            browse_destdir=False, page_start=False, page_end=False)
+        destdir = widgets.destdir.get_text()
+        debug = widgets.debug
+        set_sensitivity(widgets, check=False, savepdf=False)
+        debug("Output directory: %s" % destdir)
+        debug("Page_start: %s, Page end: %s" % 
+            (adj_int(page_start, +1, 1), adj_int(page_end, +1, "last")))
+        opener = lib.get_cookies_opener()
+        book_id = pysheng.get_id_from_string(url)
+        debug("Book ID: %s" % book_id)
+        cover_url = pysheng.get_cover_url(book_id)
+        widgets.progress_all.set_fraction(0.0)
+        widgets.progress_all.set_text('') 
+        widgets.progress_current.set_pulse_step(0.005)
+        state.downloaded_images = None
+        info = yield get_info(widgets, cover_url, opener)
         if not widgets.page_start.get_text():
             widgets.page_start.set_text(str(1))
         if not widgets.page_end.get_text():
             widgets.page_end.set_text(str(len(info["page_ids"])))
-            
+        page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]        
         namespace = dict(title=info["title"], attribution=info["attribution"])
         images = []
         for page, page_id in enumerate(page_ids, page_start):
@@ -191,14 +195,7 @@ def check_book(widgets, url):
         debug("Book ID: %s" % book_id)
         cover_url = pysheng.get_cover_url(book_id)
         set_book_info(widgets, None)
-        html = yield asyncjobs.ProgressDownloadThreadedTask(
-            cover_url, opener, headers=HEADERS, 
-            elapsed_cb=functools.partial(on_elapsed, widgets, "info"))
-        info = pysheng.get_info(html)
-        debug("Info: attribution=%s" % info["attribution"]) 
-        debug("Info: title=%s" % info["title"])
-        debug("Info: total pages=%s" % len(info["page_ids"]))
-        set_book_info(widgets, info)
+        info = yield get_info(widgets, cover_url, opener)
         widgets.page_start.set_text(str(1))
         widgets.page_end.set_text(str(len(info["page_ids"])))
         debug("Checking book done")

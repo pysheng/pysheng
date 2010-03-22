@@ -33,7 +33,7 @@ from Queue import Queue, Empty
 import StringIO
 import urllib2
 import functools
-import doctest
+import types
 
 import gobject
 gobject.threads_init()
@@ -55,11 +55,11 @@ class Job:
     States: running (default on start), cancel, paused, cancelled, finished.    
     """ 
     def __init__(self, generator):
-        self.generator = generator
+        self.generators = [generator]
         self._paused_task = None
         self.current_task = None
         self._state = "running"
-        self._advance_task(None, generator.send, None)
+        self._advance_task(None, generator, "send", None)
     
     def is_alive(self):
         return (self._state in ("running", "paused"))
@@ -91,38 +91,61 @@ class Job:
         self._check_state("running", "paused")
         self.current_task.cancel()
         self.current_task = None
-        self.generator.close()
+        for generator in reversed(self.generators):
+            generator.close()
         self._state = "cancelled"
 
-    def _start_task(self, task):
+    def _start_task(self, task, generator):
         self.current_task = task
-        task.config(functools.partial(self._advance_task, task, self.generator.send), 
-            functools.partial(self._advance_task, task, self.generator.throw))
+        task.config(functools.partial(self._advance_task, task, generator, "send"), 
+            functools.partial(self._advance_task, task, generator, "throw"))
         task.run()
         self._state = "running"
 
-    def _advance_task(self, task, method, result=None):
+    def _advance_task(self, task, generator, method, result=None):
         # Instead of advancing the task/coroutine right away, we defer 
         # the operation so it's run away from propagate_exceptions() that
         # could catches exceptions in the coroutine
         if task != self.current_task:
             raise TaskError("only the current task can reply to the coroutine")                
         if self._state == "running":
-            gobject.idle_add(self._advance_task_cb, method, result)
+            gobject.idle_add(self._advance_task_cb, generator, method, result)
         elif self._state == "paused":
-            self._paused_task = (task, method, result)
+            self._paused_task = (task, generator, method, result)
         
-    def _advance_task_cb(self, method, result):
+    def _advance_task_cb(self, generator, method, result):
         self.current_task = None
-        try:
-            task = method(result)
-        except StopIteration:
-            self._state = "finished"
-            return False
-        except:
-            self._state = "finished" # maybe "error"?
-            raise
-        self._start_task(task)
+        while 1:
+            try:
+                new_task_or_generator = getattr(generator, method)(result)
+            except StopIteration:
+                self.generators.remove(generator)
+                generator.close()
+                if not self.generators:
+                    self._state = "finished"
+                    return False
+                generator = self.generators[-1]
+                method, result = "send", None
+                continue                
+            except:
+                self._state = "finished" # maybe "error"?
+                raise
+            if isinstance(new_task_or_generator, types.GeneratorType):
+                generator = new_task_or_generator
+                self.generators.append(generator)
+                method, result = "send", None
+                continue
+            elif isinstance(new_task_or_generator, Task):
+                task = new_task_or_generator
+                break
+            else:
+                self.generators.remove(generator)
+                generator.close()
+                if not self.generators:
+                    raise RuntimeError, "Stack has no generators" 
+                generator = self.generators[-1]
+                method, result = "send", new_task_or_generator
+        self._start_task(task, generator)
         return False                    
                 
     def _check_state(self, *expected):
