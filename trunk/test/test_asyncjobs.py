@@ -92,7 +92,7 @@ class TestAsyncJobs(unittest.TestCase):
         self.context.iteration(False)                       
       
     def test_init(self):
-        self.assertEqual(self.job.generator, self.generator)
+        self.assertEqual(self.job.generators[0], self.generator)
         self.assertTrue(self.job.is_alive())
         self.assertEqual("running", self.job.current_task.state)
 
