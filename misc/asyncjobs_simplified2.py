@@ -69,7 +69,7 @@ class SleepTask(Task):
         
     def run(self):
         def _return():
-            self.return_cb()
+            self.return_cb(self.seconds)
             return False
         self.source_id = gobject.timeout_add(int(self.seconds * 1000), _return)
     
