@@ -127,22 +127,19 @@ class Job:
                 generator = self.generators[-1]
                 method, result = "send", None
                 continue                
-            except Exception, exc:
-                # propagate the exception through the generators stack till it's catched
-                for generator in reversed(self.generators[:-1]):
-                    try:
-                        generator.throw(exc)
-                        break
-                    except:
-                        pass
-                del self.generators[:]
-                self._state = "finished" # maybe "error"?
-                raise
+            except Exception, exception:
+                self.generators.remove(generator)
+                generator.close()
+                if not self.generators:
+                    self._state = "finished"
+                    raise
+                generator = self.generators[-1]
+                method, result = "throw", exception
+                continue
             if isinstance(new_task_or_generator, types.GeneratorType):
                 generator = new_task_or_generator
                 self.generators.append(generator)
                 method, result = "send", None
-                continue
             elif isinstance(new_task_or_generator, Task):
                 task = new_task_or_generator
                 break
@@ -155,7 +152,7 @@ class Job:
                 method, result = "send", new_task_or_generator
         self._start_task(task, generator)
         return False                    
-                
+
     def _check_state(self, *expected):
         if self._state not in expected:
             msg = "Current job state is '%s', expected was '%s'" % \

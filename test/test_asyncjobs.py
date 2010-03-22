@@ -78,7 +78,32 @@ def test_job(state, force_continue_after_cancel=False):
         state.job_result2 = "!cancelled"
     except Exception, ex:
         state.job_result2 = ex
-        
+
+def main_job(state, catch_exception=None):
+    if catch_exception == "main":
+        try:
+            x = yield nested_job(state, catch_exception)
+        except:
+            x = "!exception_in_main"
+    else:      
+        x = yield nested_job(state, catch_exception)
+    state.job_result.append(x)
+    x = yield TestTask()
+    state.job_result.append(x)
+    
+def nested_job(state, catch_exception):
+    if catch_exception == "nested":
+        try:
+            x = yield TestTask()
+        except:
+            x = "!exception_in_nested"
+    else:      
+        x = yield TestTask()
+    state.job_result.append(x)
+    x = yield TestTask()
+    state.job_result.append(x)
+    yield x
+          
 class TestAsyncJobs(unittest.TestCase):        
     def setUp(self):
         self.loop = gobject.MainLoop()
@@ -166,7 +191,46 @@ class TestAsyncJobs(unittest.TestCase):
         self.tick_events()
         self.assertEqual("bye", self.state.job_result2)
         
+    def xtest_nested_jobs(self):
+        self.state.job_result = []
+        job = asyncjobs.Job(main_job(self.state))
+        self.tick_events()
+        job.current_task.do_action(action="return", value="hello")
+        self.tick_events()
+        job.current_task.do_action(action="return", value="bye")
+        self.tick_events()
+        job.current_task.do_action(action="return", value="farewell")
+        self.tick_events()
+        self.assertFalse(job.current_task)
+        self.assertEqual(["hello", "bye", "bye", "farewell"], self.state.job_result)
 
+    def xtest_nested_jobs_with_exception_in_main(self):
+        self.state.job_result = []
+        job = asyncjobs.Job(main_job(self.state, catch_exception="main"))
+        self.tick_events()
+        job.current_task.do_action(action="exception", value=ValueError)
+        self.tick_events()
+        job.current_task.do_action(action="return", value="bye")
+        self.tick_events()
+        self.assertFalse(job.current_task)
+        self.assertEqual(["!exception_in_main", "bye"], 
+            self.state.job_result)
+
+    def test_nested_jobs_with_exception_in_nested(self):
+        self.state.job_result = []
+        job = asyncjobs.Job(main_job(self.state, catch_exception="nested"))
+        self.tick_events()
+        job.current_task.do_action(action="exception", value=ValueError)
+        self.tick_events()
+        job.current_task.do_action(action="return", value="bye")
+        self.tick_events()
+        job.current_task.do_action(action="return", value="farewell")
+        self.tick_events()
+        
+        self.assertFalse(job.current_task)
+        self.assertEqual(["!exception_in_nested", "bye", "bye", "farewell"], 
+            self.state.job_result)
+      
 # Threaded task
 
 def threaded_task(state, loop, fun, *args, **kwargs):
@@ -186,7 +250,6 @@ class TestThreadedTask(unittest.TestCase):
         self.job.join()        
         self.assertEqual(5, self.state.result)
         self.assertFalse(self.job.is_alive())
-
 
 # Sleep task
 
