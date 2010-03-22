@@ -46,7 +46,7 @@ def restart_buttons(widgets):
     widgets.progress_current.set_text("")
 
 def createfile(output_path, image_data):
-    open(output_path, "w").write(image_data)    
+    open(output_path, "wb").write(image_data)    
 
 def set_sensitivity(widgets, **kwargs):
     for key, value in kwargs.iteritems():
@@ -134,7 +134,8 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]        
         namespace = dict(title=info["title"], attribution=info["attribution"])
         images = []
-        for page, page_id in enumerate(page_ids, page_start):
+        for page, page_id in enumerate(page_ids):
+            page += page_start
             image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"            
             filename0 = (image_file_template+".png") % dict(namespace, page=page+1)
             filename = string_to_valid_filename(filename0.encode("utf-8"))
@@ -292,15 +293,18 @@ def on_savepdf__clicked(button, widgets, state):
         title="Save PDF",
         action=gtk.FILE_CHOOSER_ACTION_SAVE,
         buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE, gtk.RESPONSE_OK))
-    output_pdf = "out.pdf"
     chooser.set_current_folder(widgets.destdir.get_text())
     chooser.set_current_name(state.pdf_filename)
     response = chooser.run()
     if response == gtk.RESPONSE_OK:
         output_pdf = chooser.get_filename()
-        lib.create_pdf_from_images(state.downloaded_images, output_pdf, 
-            pagesize=pagesizes.A4, margin=1*cm)
-        widgets.debug("PDF written: %s" % output_pdf)
+        try:
+            lib.create_pdf_from_images(state.downloaded_images, output_pdf, 
+                pagesize=pagesizes.A4, margin=0*cm)
+            widgets.debug("PDF written: %s" % output_pdf)
+        except Exception, exception:
+            traceback.print_exc()
+            debug("error creating PDF: %s" % exception)
     chooser.destroy()
 
            
