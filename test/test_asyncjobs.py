@@ -102,7 +102,7 @@ def nested_job(state, catch_exception):
     state.job_result.append(x)
     x = yield TestTask()
     state.job_result.append(x)
-    yield x
+    raise StopIteration(x)
           
 class TestAsyncJobs(unittest.TestCase):        
     def setUp(self):

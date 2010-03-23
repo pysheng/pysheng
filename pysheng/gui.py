@@ -106,7 +106,7 @@ def get_info(widgets, url, opener):
     debug("Info: title=%s" % info["title"])
     debug("Info: total pages=%s" % len(info["page_ids"]))
     set_book_info(widgets, info)        
-    yield info
+    raise StopIteration(info)
 
 def download_book(widgets, state, url, page_start=0, page_end=None):
     """Yield (info, page, image_data) for pages from page_start to page_end"""

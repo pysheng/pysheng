@@ -127,13 +127,13 @@ class Job:
     def _advance_task_step(self, generator, method, result):
         try:
             new_task_or_generator = getattr(generator, method)(result)
-        except StopIteration:
+        except StopIteration, exc:            
             self.generators.remove(generator)
             generator.close()
             if not self.generators:
                 self._state = "finished"
                 return None, None, None
-            return self.generators[-1], "send", None
+            return self.generators[-1], "send", exc.args[0]
         except Exception, exception:
             self.generators.remove(generator)
             generator.close()
