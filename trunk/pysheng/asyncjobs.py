@@ -112,46 +112,47 @@ class Job:
             gobject.idle_add(self._advance_task_cb, generator, method, result)
         elif self._state == "paused":
             self._paused_task = (task, generator, method, result)
-        
+    
     def _advance_task_cb(self, generator, method, result):
         self.current_task = None
         while 1:
-            try:
-                new_task_or_generator = getattr(generator, method)(result)
-            except StopIteration:
-                self.generators.remove(generator)
-                generator.close()
-                if not self.generators:
-                    self._state = "finished"
-                    return False
-                generator = self.generators[-1]
-                method, result = "send", None
-                continue                
-            except Exception, exception:
-                self.generators.remove(generator)
-                generator.close()
-                if not self.generators:
-                    self._state = "finished"
-                    raise
-                generator = self.generators[-1]
-                method, result = "throw", exception
-                continue
-            if isinstance(new_task_or_generator, types.GeneratorType):
-                generator = new_task_or_generator
-                self.generators.append(generator)
-                method, result = "send", None
-            elif isinstance(new_task_or_generator, Task):
-                task = new_task_or_generator
+            generator, method, result = self._advance_task_step(generator, method, result)
+            if not generator:
+                return
+            elif method == "new_task": 
+                task = result
                 break
-            else:
-                self.generators.remove(generator)
-                generator.close()
-                if not self.generators:
-                    raise RuntimeError, "Stack has no generators" 
-                generator = self.generators[-1]
-                method, result = "send", new_task_or_generator
         self._start_task(task, generator)
-        return False                    
+
+    def _advance_task_step(self, generator, method, result):
+        try:
+            new_task_or_generator = getattr(generator, method)(result)
+        except StopIteration:
+            self.generators.remove(generator)
+            generator.close()
+            if not self.generators:
+                self._state = "finished"
+                return None, None, None
+            return self.generators[-1], "send", None
+        except Exception, exception:
+            self.generators.remove(generator)
+            generator.close()
+            if not self.generators:
+                self._state = "finished"
+                raise
+            return self.generators[-1], "throw", exception
+        if isinstance(new_task_or_generator, types.GeneratorType):
+            generator = new_task_or_generator
+            self.generators.append(generator)
+            return generator, "send", None
+        elif isinstance(new_task_or_generator, Task):
+            return generator, "new_task", new_task_or_generator 
+        else:
+            self.generators.remove(generator)
+            generator.close()
+            if not self.generators:
+                raise RuntimeError, "Stack has no generators" 
+            return self.generators[-1], "send", new_task_or_generator
 
     def _check_state(self, *expected):
         if self._state not in expected:
