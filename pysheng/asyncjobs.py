@@ -195,16 +195,16 @@ class Task:
     """
     Base class for asynchronous tasks.
     
-    Tasks must override method run and, optionally, cancel, pause and resume.
-    To develop robust tasks, make sure that all asynchronous callbacks that 
-    may raise an exception are decorated with propagate_exceptions. 
+    Tasks must override methods run and, optionally, cancel, pause and resume.
+    In order to get robust tasks, make sure that all asynchronous callbacks 
+    that may raise an exception use a @propagate_exceptions decorator. 
     """
     def config(self, return_cb, exception_cb):
         self.return_cb = return_cb
         self.exception_cb = exception_cb
 
     def run(self):
-        raise RuntimeError, "Run method must be overriden"
+        raise RuntimeError, "Run method must be overriden by children classes"
 
     def cancel(self):
         pass
@@ -214,6 +214,33 @@ class Task:
 
     def resume(self):
         pass
+
+class SleepTask(Task):
+    """Sleep for some time and return the elapsed time for the job."""
+    def __init__(self, seconds):
+        self.seconds = seconds
+        
+    def run(self):
+        self.source_id = gobject.timeout_add(int(self.seconds * 1000), self._return)
+        self.start_time = time.time()
+        self.elapsed_time = 0.0
+
+    def cancel(self):
+        gobject.source_remove(self.source_id)
+
+    def pause(self):
+        gobject.source_remove(self.source_id)        
+        self.elapsed_time += time.time() - self.start_time
+
+    def resume(self):
+        remaining_time = self.seconds - self.elapsed_time
+        self.source_id = gobject.timeout_add(int(remaining_time * 1000), self._return)
+        self.start_time = time.time()
+        
+    def _return(self):
+        self.elapsed_time += time.time() - self.start_time
+        self.return_cb(self.elapsed_time)
+        return False              
     
 # Some ideas for threaded classes:
 #
@@ -226,9 +253,9 @@ class ThreadedTask(Task):
     """
     Run a function in a new thread and return the result.
     
-    Function being run knows nothing about threads nor events, so there is no
-    way to cancel it or pause it. So the class does not implement these methods 
-    either.    
+    The function being run knows nothing about threads or events, so there is no
+    way to cancel or pause it. Therefore, the class does not implement these 
+    methods either.    
     """
     def __init__(self, fun, *args, **kwargs):
         self.function = (fun, args, kwargs)
@@ -262,34 +289,7 @@ class ThreadedTask(Task):
             queue.put(("exception", exc))
             raise
         queue.put(("return", result))
-
-            
-class SleepTask(Task):
-    """Sleep for some time and return."""
-    def __init__(self, seconds):
-        self.seconds = seconds
-        
-    def run(self):
-        self.source_id = gobject.timeout_add(int(self.seconds * 1000), self._return)
-        self.start_time = time.time()
-        self.elapsed_time = 0.0
-
-    def cancel(self):
-        gobject.source_remove(self.source_id)
-
-    def pause(self):
-        gobject.source_remove(self.source_id)        
-        self.elapsed_time += time.time() - self.start_time
-
-    def resume(self):
-        remaining_time = self.seconds - self.elapsed_time
-        self.source_id = gobject.timeout_add(int(remaining_time * 1000), self._return)
-        self.start_time = time.time()
-        
-    def _return(self):
-        self.return_cb()
-        return False              
-
+ 
 def build_request(url, postdata=None):
     """Build a URL request with (optional) POST data"""
     data = (urllib.urlencode(postdata) if postdata else None)
@@ -308,15 +308,15 @@ def connect_opener(url, opener=None, headers=None):
        
 class ProgressDownloadThreadedTask(Task):
     """
-    Download a resource given its URL (it uses urllib2.urlopen) with an  
+    Download a resource given its URL using urllib2.urlopen with an optional  
     opener (urllib2.Request object) and some HTTP headers (dictionary),
     and return the downloaded data.
     
-    This tasks calls 'elapsed_cb' every time a chunk of data has been 
-    downloaded, containing a tuple (elapsed, total) bytes.
+    The task calls 'elapsed_cb' callable every time a chunk of data has been 
+    downloaded containing a tuple (elapsed, total) bytes.
     
-    Note that total bytes field can only be set if the response
-    contains a valid 'Content-Length' header, otherwise it will be None. 
+    Note that the total-bytes field will only be set if the response
+    contains a valid 'Content-Length' header, otherwise it default to None. 
     """
     def __init__(self, url, opener=None, headers=None, elapsed_cb=None, chunk_size=1024):
         self.url = url
