@@ -69,8 +69,8 @@ def set_book_info(widgets, info):
     def italic(s):
         return "<i>%s</i>" % s
     if info:
-        widgets.title.set_markup(italic(str(info["title"])))
-        widgets.attribution.set_markup(italic(str(info["attribution"])))
+        widgets.title.set_markup(italic(str(info["title"] or "-")))
+        widgets.attribution.set_markup(italic(str(info["attribution"] or "-")))
         widgets.npages.set_markup(italic(str(len(info["page_ids"]))))
     else:
         widgets.title.set_markup(italic("-"))
@@ -78,8 +78,8 @@ def set_book_info(widgets, info):
         widgets.npages.set_markup(italic("-"))
    
 def string_to_valid_filename(s):   
-   forbidden_chars = ":;'/\\?%*|\"<>"
-   return "".join(c for c in s if c not in forbidden_chars)
+    forbidden_chars = ":;'/\\?%*|\"<>"
+    return "".join(c for c in s if c not in forbidden_chars)
         
 def on_elapsed(widgets, name, elapsed, total):
     if total is not None:
@@ -89,6 +89,8 @@ def on_elapsed(widgets, name, elapsed, total):
         widgets.progress_current.pulse()
     msg = "Downloading %s..." % name    
     widgets.progress_current.set_text("Downloading %s..." % name)
+
+# Jobs
 
 def get_info(widgets, url, opener):
     debug = widgets.debug
@@ -123,7 +125,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         cover_url = pysheng.get_cover_url(book_id)
         widgets.progress_all.set_fraction(0.0)
         widgets.progress_all.set_text('') 
-        widgets.progress_current.set_pulse_step(0.005)
+        widgets.progress_current.set_pulse_step(0.04)
         state.downloaded_images = None
         info = yield get_info(widgets, cover_url, opener)
         if not widgets.page_start.get_text():
@@ -135,7 +137,10 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         images = []
         for page, page_id in enumerate(page_ids):
             page += page_start
-            image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"            
+            if namespace["attribution"]:
+                image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"
+            else:
+                image_file_template = "%(title)s.page-%(page)03d"
             filename0 = (image_file_template+".png") % dict(namespace, page=page+1)
             filename = string_to_valid_filename(filename0.encode("utf-8"))
             output_path = os.path.join(destdir, filename)
@@ -175,9 +180,11 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         debug("Done!")
         restart_buttons(widgets)
         state.downloaded_images = images
-        state.pdf_filename = "%(attribution)s - %(title)s.pdf" % namespace
-        set_sensitivity(widgets, savepdf=True)
-        
+        if namespace["attribution"]:
+            state.pdf_filename = "%(attribution)s - %(title)s.pdf" % namespace
+        else:
+            state.pdf_filename = "%(title)s.pdf" % namespace
+        set_sensitivity(widgets, savepdf=True)        
     except asyncjobs.JobCancelled:
         return        
     except Exception, detail:
@@ -198,14 +205,17 @@ def check_book(widgets, url):
         info = yield get_info(widgets, cover_url, opener)
         widgets.page_start.set_text(str(1))
         widgets.page_end.set_text(str(len(info["page_ids"])))
-        debug("Checking book done")
+        debug("Check book done")
+        restart_buttons(widgets)
     except asyncjobs.JobCancelled:
         return
     except Exception, detail:
         traceback.print_exc()
         debug(Exception(detail))
-        debug("check book error")
-    restart_buttons(widgets)
+        debug("Check book error")
+        restart_buttons(widgets)
+
+# Widget callbacks
      
 def on_start__clicked(button, widgets, state):
     if state.download_job and state.download_job.is_alive():
@@ -286,7 +296,8 @@ def on_savepdf__clicked(button, widgets, state):
         from reportlab.lib import pagesizes
         from reportlab.lib.units import cm
     except ImportError:
-        widgets.debug("ReportPDF module is needed to create a PDF")
+        widgets.debug("You need to install ReportLab (http://www.reportlab.com/)" + 
+            " to create a PDF")
         return
     chooser = gtk.FileChooserDialog(
         title="Save PDF",
@@ -294,6 +305,7 @@ def on_savepdf__clicked(button, widgets, state):
         buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE, gtk.RESPONSE_OK))
     chooser.set_current_folder(widgets.destdir.get_text())
     chooser.set_current_name(state.pdf_filename)
+    chooser.set_do_overwrite_confirmation(True)
     response = chooser.run()
     if response == gtk.RESPONSE_OK:
         output_pdf = chooser.get_filename()
@@ -306,7 +318,6 @@ def on_savepdf__clicked(button, widgets, state):
             debug("error creating PDF: %s" % exception)
     chooser.destroy()
 
-           
 ###
                 
 def set_callbacks(namespace, widgets, state):
@@ -364,8 +375,8 @@ def run(book_url=None):
     state = State()
     widgets.debug = get_debug_func(widgets)
     widgets.window.set_title("PySheng v%s: Google Books downloader" % pysheng.VERSION)
-    set_callbacks(globals(), widgets, state)
     view_init(widgets)
+    set_callbacks(globals(), widgets, state)
     if book_url:
         widgets.url.set_text(book_url)
     return widgets, state
