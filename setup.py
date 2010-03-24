@@ -2,9 +2,14 @@
 """Download books from Google Books."""
 
 from distutils.core import setup
-#import py2exe
+import platform
 
-setup(
+WIN32 = (platform.system() == "Windows")
+
+if WIN32:
+    import py2exe
+
+setup_kwargs = dict(
     name="pysheng",
     description="Download books from Google Books",
     author="Arnau Sanchez",
@@ -19,11 +24,11 @@ setup(
 	  ],
     license="GNU Public License v3.0",
     long_description=" ".join(__doc__.strip().splitlines()),
-    data_files = [
-        ('share/pysheng/',
+    data_files=[
+        ('data',
             ('data/main.glade',)),
     ],
-    classifiers = [
+    classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: GNU General Public License (GPL)',
@@ -33,13 +38,23 @@ setup(
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP',
     ],
-  options = {
-    'py2exe' : {
-      'packages': 'encodings',
-      'includes': 'cairo, pango, pangocairo, atk, gobject',
-    },
-    'sdist': {
-      'formats': 'zip',
-    }
-  },    
+    options={
+        'py2exe' : {
+            'packages': 'encodings',
+            'includes': 'cairo, pango, pangocairo, atk, gobject',
+        },
+        'sdist': {
+            'formats': 'zip',
+        }
+    }    
 )
+
+if WIN32:
+    setup_kwargs["windows"] = [
+      {
+        "script": "bin/pysheng-gui",
+        #"icon_resources": [(1, "a.ico")],
+      },
+    ]
+    
+setup(**setup_kwargs)
