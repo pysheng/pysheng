@@ -315,7 +315,7 @@ def on_savepdf__clicked(button, widgets, state):
             widgets.debug("PDF written: %s" % output_pdf)
         except Exception, exception:
             traceback.print_exc()
-            debug("error creating PDF: %s" % exception)
+            widgets.debug("error creating PDF: %s" % exception)
     chooser.destroy()
 
 ###
@@ -366,7 +366,7 @@ def run(book_url=None):
         "title", "attribution", "npages", "browse_destdir", 
         "progress_all", "progress_current", "savepdf",
     ]
-    for filepath in ["data/main.glade", "/usr/share/pysheng/main.glade"]:
+    for filepath in ["data/main.glade", "../pysheng/main.glade"]:
         if os.path.isfile(filepath):
             break
     else:
