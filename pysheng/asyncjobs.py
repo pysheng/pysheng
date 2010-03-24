@@ -134,13 +134,13 @@ class Job:
                 self._state = "finished"
                 return None, None, None
             return self.generators[-1], "send", exc.args[0]
-        except Exception, exception:
+        except Exception, exc:
             self.generators.remove(generator)
             generator.close()
             if not self.generators:
                 self._state = "finished"
                 raise
-            return self.generators[-1], "throw", exception
+            return self.generators[-1], "throw", exc
         if isinstance(new_task_or_generator, types.GeneratorType):
             generator = new_task_or_generator
             self.generators.append(generator)
@@ -148,11 +148,9 @@ class Job:
         elif isinstance(new_task_or_generator, Task):
             return generator, "new_task", new_task_or_generator 
         else:
-            self.generators.remove(generator)
-            generator.close()
-            if not self.generators:
-                raise RuntimeError, "Stack has no generators" 
-            return self.generators[-1], "send", new_task_or_generator
+            msg = "A task can only yield another tasks or generators, got: %s" % \
+                new_task_or_generator
+            raise ValueError, msg
 
     def _check_state(self, *expected):
         if self._state not in expected:
@@ -167,15 +165,16 @@ def propagate_exceptions(method_or_task):
     Decorator to wrap task callbacks (either methods or functions).
     
     This decorator ensures that exceptions raised inside asynchronous
-    callbacks of a task are propagated to the coroutine, otherwise the 
-    task would simply die resulting on a forever-stuck job.
+    callbacks of a task are propagated to the caller (the coroutine),
+    otherwise the task must stuck the job forever.
     """  
     def _propagate_wrapper(task, function, *args, **kwargs):
         try:            
             return function(*args, **kwargs)
         except Exception, exc:
             task.exception_cb(exc)
-            raise
+            #raise
+            return
     if callable(method_or_task):
         method = method_or_task
         def _wrapper(task, *args, **kwargs):
@@ -287,7 +286,7 @@ class ThreadedTask(Task):
             result = fun(*args, **kwargs)
         except Exception, exc:
             queue.put(("exception", exc))
-            raise
+            #raise
         queue.put(("return", result))
  
 def build_request(url, postdata=None):
@@ -406,4 +405,4 @@ class ProgressDownloadThreadedTask(Task):
                     break
         except Exception, exc:
             queue.put(dict(key="exception", exception=exc))
-            raise
+            #raise
