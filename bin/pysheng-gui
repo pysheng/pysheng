@@ -10,5 +10,17 @@ def main(args):
     widgets.window.show_all()
     gtk.main()
 
+def py2exe_remove_log():
+    if not hasattr(sys, "frozen"):
+        return
+    class Blackhole(object):
+        def write(self,text):
+            pass
+        def flush(self):
+            pass
+    sys.stdout = Blackhole()
+    sys.stderr = Blackhole()
+    
 if __name__ == '__main__':
+    py2exe_remove_log()
     sys.exit(main(sys.argv[1:]))
