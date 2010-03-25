@@ -41,7 +41,7 @@ gobject.threads_init()
 JobCancelled = GeneratorExit
 
 class TaskError(Exception):
-    """Something wrong was detected in a task and it must be aborted."""
+    """Something wrong was detected inside a task and it must be aborted."""
     def __init__(self, reason):
         self.reason = reason
     def __str__(self):
@@ -129,7 +129,6 @@ class Job:
             new_task_or_generator = getattr(generator, method)(result)
         except StopIteration, exc:            
             self.generators.remove(generator)
-            generator.close()
             if not self.generators:
                 self._state = "finished"
                 return None, None, None
@@ -146,15 +145,16 @@ class Job:
             self.generators.append(generator)
             return generator, "send", None
         elif isinstance(new_task_or_generator, Task):
-            return generator, "new_task", new_task_or_generator 
+            task = new_task_or_generator
+            return generator, "new_task", task 
         else:
-            msg = "A task can only yield another tasks or generators, got: %s" % \
+            msg = "A task can only yield another task or generator, got: %s" % \
                 new_task_or_generator
             raise ValueError, msg
 
     def _check_state(self, *expected):
         if self._state not in expected:
-            msg = "Current job state is '%s', expected was '%s'" % \
+            msg = "Job current state is '%s', expected was '%s'" % \
                 (self._state, "/".join(expected))
             raise ValueError, msg
 
@@ -164,17 +164,17 @@ def propagate_exceptions(method_or_task):
     """
     Decorator to wrap task callbacks (either methods or functions).
     
-    This decorator ensures that exceptions raised inside asynchronous
-    callbacks of a task are propagated to the caller (the coroutine),
-    otherwise the task must stuck the job forever.
+    This decorator ensures that exceptions raised inside callbacks 
+    of a task are propagated to the caller (the coroutine),
+    otherwise both the task and the job may stuck forever.
     """  
     def _propagate_wrapper(task, function, *args, **kwargs):
         try:            
             return function(*args, **kwargs)
         except Exception, exc:
             task.exception_cb(exc)
-            #raise
-            return
+            raise
+            #return
     if callable(method_or_task):
         method = method_or_task
         def _wrapper(task, *args, **kwargs):
@@ -286,9 +286,10 @@ class ThreadedTask(Task):
             result = fun(*args, **kwargs)
         except Exception, exc:
             queue.put(("exception", exc))
-            #raise
+            raise
         queue.put(("return", result))
- 
+
+
 def build_request(url, postdata=None):
     """Build a URL request with (optional) POST data"""
     data = (urllib.urlencode(postdata) if postdata else None)
@@ -326,16 +327,14 @@ class ProgressDownloadThreadedTask(Task):
         self.data = StringIO.StringIO()
 
     def run(self):
-        queue = Queue()
+        self.queue = Queue()
         self.pause_event = Event()
         self.cancel_event = Event()
-        thread = Thread(target=self._thread_manager, 
-            args=(self.url, self.opener, self.headers, self.chunk_size, 
-                  queue, self.pause_event, self.cancel_event))
-        thread.setDaemon(True)
-        thread.start()
+        self.thread = Thread(target=self._thread_manager)
+        self.thread.setDaemon(True)
+        self.thread.start()
         self.current_size = 0
-        self._thread_id = gobject.timeout_add(50, self._thread_receiver, queue, thread)        
+        self._thread_id = gobject.timeout_add(50, self._thread_receiver)        
 
     def pause(self):
         self.pause_event.set()
@@ -348,14 +347,14 @@ class ProgressDownloadThreadedTask(Task):
         gobject.source_remove(self._thread_id)
         
     @propagate_exceptions
-    def _thread_receiver(self, queue, thread):
+    def _thread_receiver(self):
         if self.pause_event.isSet():
             return True        
-        elif not thread.isAlive() and queue.empty():
+        elif not self.thread.isAlive() and self.queue.empty():
             self.exception_cb(TaskError("thread is dead but the queue is empty"))
             return False 
-        while not queue.empty():    
-            result = queue.get()
+        while not self.queue.empty():    
+            result = self.queue.get()
             if not result:
                 return False
             key = result["key"]
@@ -380,29 +379,28 @@ class ProgressDownloadThreadedTask(Task):
                 raise ValueError("Unexpected message in queue")
         return True
 
-    def _thread_manager(self, url, opener, headers, chunk_size, queue, 
-            pause_event, cancel_event):
+    def _thread_manager(self):
         try:
-            request, size = connect_opener(url, opener, headers)
+            request, size = connect_opener(self.url, self.opener, self.headers)
             while 1:                
-                data = request.read(chunk_size)
-                if cancel_event.isSet():
-                    queue.put(None)
+                data = request.read(self.chunk_size)
+                if self.cancel_event.isSet():
+                    self.queue.put(None)
                     return
-                elif pause_event.isSet():
+                elif self.pause_event.isSet():
                     # on pause, close current request and re-connect later
                     request.close()
-                    while pause_event.isSet():
-                        if cancel_event.isSet():
-                            queue.put(None)
+                    while self.pause_event.isSet():
+                        if self.cancel_event.isSet():
+                            self.queue.put(None)
                             return
                         time.sleep(0.1)
-                    queue.put(dict(key="restart", size=size))
-                    request, size = connect_opener(url, opener, headers)
+                    self.queue.put(dict(key="restart", size=size))
+                    request, size = connect_opener(self.url, self.opener, self.headers)
                     continue
-                queue.put(dict(key="data", data=data, size=size))
+                self.queue.put(dict(key="data", data=data, size=size))
                 if not data:
                     break
         except Exception, exc:
-            queue.put(dict(key="exception", exception=exc))
-            #raise
+            self.queue.put(dict(key="exception", exception=exc))
+            raise
