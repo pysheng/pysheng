@@ -9,8 +9,12 @@ The goal of this module is to allow a programmer to write PyGTK apps without
 resorting to complicated callbacks on blocking functions. The use of 
 threads for some operations (downloading) is required so as to use 
 high-level urllib2 functions, but they are avoided whenever possible
-(a non-blocking urllib2 is feasible using libraries as eventlet or gevent,
-take a look on them if using threads is a no-no for you).
+(non-blocking urllib2 calls are feasible using libraries like eventlet 
+or gevent, take a look on them if using threads is a no-no for you).
+
+More info: 
+
+http://code.activestate.com/recipes/577129-run-asynchronous-tasks-using-coroutines/
 """
 # Copyright (c) Arnau Sanchez <tokland@gmail.com>
 
@@ -54,6 +58,7 @@ class Job:
     
     States: running (default on start), cancel, paused, cancelled, finished.    
     """ 
+    
     def __init__(self, generator):
         self.generators = [generator]
         self._paused_task = None
@@ -312,11 +317,10 @@ class ProgressDownloadThreadedTask(Task):
     opener (urllib2.Request object) and some HTTP headers (dictionary),
     and return the downloaded data.
     
-    The task calls 'elapsed_cb' callable every time a chunk of data has been 
-    downloaded containing a tuple (elapsed, total) bytes.
-    
-    Note that the total-bytes field will only be set if the response
-    contains a valid 'Content-Length' header, otherwise it default to None. 
+    The task calls 'elapsed_cb' every time a chunk of data has been 
+    downloaded, the argument being (elapsed, total). Note that the total bytes 
+    field will only be set if the response contains a valid 'Content-Length' 
+    header, otherwise it default to None. 
     """
     def __init__(self, url, opener=None, headers=None, elapsed_cb=None, chunk_size=1024):
         self.url = url
