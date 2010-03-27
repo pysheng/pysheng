@@ -60,7 +60,7 @@ class Job:
     """ 
     
     def __init__(self, generator):
-        self.generators = [generator]
+        self.generator = generator
         self._paused_task = None
         self.current_task = None
         self._state = "running"
@@ -96,8 +96,7 @@ class Job:
         self._check_state("running", "paused")
         self.current_task.cancel()
         self.current_task = None
-        for generator in reversed(self.generators):
-            generator.close()
+        self.generator.close()
         self._state = "cancelled"
 
     def _start_task(self, task, generator):
@@ -131,30 +130,20 @@ class Job:
 
     def _advance_task_step(self, generator, method, result):
         try:
-            new_task_or_generator = getattr(generator, method)(result)
+            new_task = getattr(generator, method)(result)
         except StopIteration, exc:            
-            self.generators.remove(generator)
-            if not self.generators:
-                self._state = "finished"
-                return None, None, None
-            return self.generators[-1], "send", exc.args[0]
+            self._state = "finished"
+            return None, None, None
         except Exception, exc:
-            self.generators.remove(generator)
             generator.close()
-            if not self.generators:
-                self._state = "finished"
-                raise
-            return self.generators[-1], "throw", exc
-        if isinstance(new_task_or_generator, types.GeneratorType):
-            generator = new_task_or_generator
-            self.generators.append(generator)
-            return generator, "send", None
-        elif isinstance(new_task_or_generator, Task):
-            task = new_task_or_generator
+            self._state = "finished"
+            raise
+        if isinstance(new_task, Task):
+            task = new_task
             return generator, "new_task", task 
         else:
-            msg = "A task can only yield another task or generator, got: %s" % \
-                new_task_or_generator
+            msg = "A job can only yield tasks, got: %s" % \
+                new_task
             raise ValueError, msg
 
     def _check_state(self, *expected):
