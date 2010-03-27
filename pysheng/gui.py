@@ -28,6 +28,7 @@ import gobject
 
 from pysheng import lib
 from pysheng import asyncjobs
+from pysheng.yieldfrom import supergenerator, _from
 import pysheng
 
 HEADERS = {"User-Agent": pysheng.AGENT}
@@ -108,6 +109,7 @@ def get_info(widgets, url, opener):
     set_book_info(widgets, info)        
     raise StopIteration(info)
 
+@supergenerator
 def download_book(widgets, state, url, page_start=0, page_end=None):
     """Yield (info, page, image_data) for pages from page_start to page_end"""
     try:
@@ -127,7 +129,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         widgets.progress_all.set_text('') 
         widgets.progress_current.set_pulse_step(0.04)
         state.downloaded_images = None
-        info = yield get_info(widgets, cover_url, opener)
+        info = yield _from(get_info(widgets, cover_url, opener))
         if not widgets.page_start.get_text():
             widgets.page_start.set_text(str(1))
         if not widgets.page_end.get_text():
@@ -192,6 +194,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         debug("job error: %s" % detail)
         restart_buttons(widgets)    
 
+@supergenerator
 def check_book(widgets, url):    
     set_sensitivity(widgets, url=False, check=False, start=False, cancel=True)
     debug = widgets.debug
@@ -202,7 +205,7 @@ def check_book(widgets, url):
         debug("Book ID: %s" % book_id)
         cover_url = pysheng.get_cover_url(book_id)
         set_book_info(widgets, None)
-        info = yield get_info(widgets, cover_url, opener)
+        info = yield _from(get_info(widgets, cover_url, opener))
         widgets.page_start.set_text(str(1))
         widgets.page_end.set_text(str(len(info["page_ids"])))
         debug("Check book done")
