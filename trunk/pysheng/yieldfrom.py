@@ -3,7 +3,7 @@
 from functools import wraps
 
 class _from(object):
-    """Wrap a nested generator function in a supergenerator."""
+    """Wrap a nested generator call in a supergenerator."""
     def __init__(self, genfunc):
         self.genfunc = genfunc
 
