@@ -369,7 +369,9 @@ def run(book_url=None):
         "title", "attribution", "npages", "browse_destdir", 
         "progress_all", "progress_current", "savepdf",
     ]
-    for filepath in ["data/main.glade", "../pysheng/main.glade"]:
+    currentdir = os.path.join(os.path.dirname(__file__))
+    for dirname in [currentdir, "/usr/share/pysheng"]:
+        filepath = os.path.join(dirname, "main.glade")        
         if os.path.isfile(filepath):
             break
     else:
