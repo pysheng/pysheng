@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """Download books from Google Books."""
 
+from pysheng import VERSION
 from distutils.core import setup
 import platform
 
@@ -11,6 +12,7 @@ if WIN32:
 
 setup_kwargs = dict(
     name="pysheng",
+    version=VERSION,
     description="Download books from Google Books",
     author="Arnau Sanchez",
     author_email="tokland@gmail.com",
@@ -25,8 +27,8 @@ setup_kwargs = dict(
     license="GNU Public License v3.0",
     long_description=" ".join(__doc__.strip().splitlines()),
     data_files=[
-        ('data',
-            ('data/main.glade',)),
+        ('share/pysheng',
+            ('pysheng/main.glade',)),
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',
