@@ -34,7 +34,7 @@ http://code.activestate.com/recipes/577129-run-asynchronous-tasks-using-coroutin
 import time
 from threading import Thread, Event
 from Queue import Queue, Empty
-import StringIO
+from io import BytesIO
 import urllib2
 import functools
 import types
@@ -317,7 +317,7 @@ class ProgressDownloadThreadedTask(Task):
         self.headers = headers
         self.elapsed_cb = elapsed_cb
         self.chunk_size = chunk_size
-        self.data = StringIO.StringIO()
+        self.data = BytesIO()
 
     def run(self):
         self.queue = Queue()
@@ -355,7 +355,7 @@ class ProgressDownloadThreadedTask(Task):
                 self.current_size = 0
                 if self.elapsed_cb:
                     self.elapsed_cb(self.current_size, result["size"])
-                self.data = StringIO.StringIO()
+                self.data = BytesIO()
             elif key == "exception":
                 self.exception_cb(result["exception"])
                 return False
