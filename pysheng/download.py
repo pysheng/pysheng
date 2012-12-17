@@ -90,14 +90,16 @@ def download(*args, **kwargs):
     return lib.download(*args, **dict(kwargs, agent=AGENT))
 
 def download_book(url, page_start=0, page_end=None):
-    """Yield (info, page, image_data) for pages from page_start to page_end"""
+    """Yield tuples (info, page, image_data) for each page of the book
+       <url> from <page_start> to <page_end>"""
     opener = lib.get_cookies_opener()
     cover_url = get_cover_url(get_id_from_string(url))
     cover_html = download(cover_url, opener=opener)
     info = get_info(cover_html)
     page_ids = itertools.islice(info["page_ids"], page_start, page_end)
-    for page, page_id in enumerate(page_ids):
-        page += page_start
+    
+    for page0, page_id in enumerate(page_ids):
+        page = page0 + page_start
         page_url = get_page_url(info["prefix"], page_id)
         page_html = download(page_url, opener=opener)
         image_url = get_image_url_from_page(page_html)
@@ -111,13 +113,18 @@ def main(args):
 
     Download a Google Book and create a PNG image for each page.""" 
     parser = optparse.OptionParser(usage)
-    options, args0 = parser.parse_args(args)
-    if not args:
+    parser.add_option('-s', '--page-start', dest='page_start', type="int",
+        default=1, help='Start page')
+    parser.add_option('-e', '--page-end', dest='page_end', type="int",
+        default=None, help='End page')
+    options, pargs = parser.parse_args(args)
+    if not pargs:
         parser.print_usage()
-        return 2    
-    url, = args
+        return 2
+        
+    url = pargs[0]
     image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"
-    for info, page, image_data in download_book(url):
+    for info, page, image_data in download_book(url, options.page_start, options.page_end):
         namespace = dict(title=info["title"], attribution=info["attribution"])
         output_file = ((image_file_template+".png") % 
           dict(namespace, page=page+1)).encode("utf-8")
