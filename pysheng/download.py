@@ -43,7 +43,8 @@ def get_id_from_string(s):
     return match.group(1)
 
 def get_cover_url(book_id):
-    return "http://books.google.com/books?id=%s&hl=en&printsec=frontcover" % book_id
+    url = "http://books.google.com/books"
+    return "%s?id=%s&hl=en&printsec=frontcover&source=gbs_ge_summary_r&cad=0" % (url, book_id)
     
 def get_info(cover_html):
     """Return dictionary with the book info (prefix, page_ids, title, attribution)."""
@@ -63,6 +64,8 @@ def get_info(cover_html):
     if len(oc_run_args) < 2:
         raise ParsingError, "Expecting at least 2 arguments in function OC_Run()"
     pages_info, book_info = oc_run_args[:2]
+    if "page" not in pages_info:
+      raise ParsingError, "Cannot found page info"
     page_ids = [x["pid"] for x in sorted(pages_info["page"], key=lambda d: d["order"])]
     if not page_ids:
         raise ParsingError, "No page_ids found"
