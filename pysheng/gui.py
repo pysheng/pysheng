@@ -18,9 +18,12 @@
 import os
 import sys
 import time
+import glob
 import traceback
 import functools
+import StringIO
 import string
+import imghdr
 
 import gtk
 import gtk.glade
@@ -143,11 +146,12 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
                 image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"
             else:
                 image_file_template = "%(title)s.page-%(page)03d"
-            filename0 = (image_file_template+".png") % dict(namespace, page=page+1)
+            filename0 = image_file_template % dict(namespace, page=page+1)
             filename = string_to_valid_filename(filename0.encode("utf-8"))
             output_path = os.path.join(destdir, filename)
-            if os.path.exists(output_path):
-                debug("Skip existing image: %s" % output_path)
+            existing_files = glob.glob(output_path + ".*")
+            if existing_files:
+                debug("Skip existing image: %s" % existing_files)
                 images.append(output_path)
                 continue             
             relative_page = page - page_start + 1
@@ -171,11 +175,13 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             widgets.progress_current.set_fraction(0.0)
             image_data = yield asyncjobs.ProgressDownloadThreadedTask(
                 image_url, opener, headers=HEADERS,
-                elapsed_cb=functools.partial(on_elapsed, widgets, "image"))            
-            debug(header + "Image downloaded (%d bytes)" % len(image_data))
-            createfile(output_path, image_data)            
-            debug(header + "Image written: %s" % output_path)
-            images.append(output_path)
+                elapsed_cb=functools.partial(on_elapsed, widgets, "image"))
+            format = imghdr.what(StringIO.StringIO(image_data)) or "png"
+            debug(header + "Image downloaded (size=%d, format=%s)" % (len(image_data), format))
+            output_path_with_extension = output_path + "." + format
+            createfile(output_path_with_extension, image_data)            
+            debug(header + "Image written: %s" % output_path_with_extension)
+            images.append(output_path_with_extension)
 
         widgets.progress_all.set_fraction(1.0)
         widgets.progress_all.set_text("Done")                  
@@ -387,7 +393,7 @@ def run(book_url=None):
     return widgets, state
 
 def main(args):
-    widgets, state = run()
+    widgets, state = run(args[0] if args else None)
     widgets.window.show_all()
     gtk.main()
 
