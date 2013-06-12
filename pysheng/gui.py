@@ -16,6 +16,7 @@
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 
 import os
+import re
 import sys
 import time
 import glob
@@ -167,7 +168,9 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
                 page_url, opener, headers=HEADERS,
                 elapsed_cb=functools.partial(on_elapsed, widgets, "page"))
             
-            image_url = pysheng.get_image_url_from_page(page_html)
+            image_url0 = pysheng.get_image_url_from_page(page_html)
+            # Set a big width to get the maximum quality image
+            image_url = re.sub("w=(\d+)", "w=10000", image_url0)
             if not image_url:
               debug("No image for this page, probably access is restricted")
               continue            
@@ -194,7 +197,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             state.pdf_filename = "%(title)s.pdf" % namespace
         set_sensitivity(widgets, savepdf=True)        
     except asyncjobs.JobCancelled:
-        return        
+        return
     except Exception, detail:
         traceback.print_exc()
         debug("job error: %s" % detail)
