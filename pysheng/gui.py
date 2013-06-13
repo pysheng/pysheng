@@ -95,6 +95,11 @@ def on_elapsed(widgets, name, elapsed, total):
     msg = "Downloading %s..." % name    
     widgets.progress_current.set_text("Downloading %s..." % name)
 
+def escape_glob(path):
+    transdict = {'[': '[[]', ']': '[]]', '*': '[*]', '?': '[?]'}
+    rc = re.compile('|'.join(map(re.escape, transdict)))
+    return rc.sub(lambda m: transdict[m.group(0)], path)
+    
 # Jobs
 
 def get_info(widgets, url, opener):
@@ -150,11 +155,11 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             filename0 = image_file_template % dict(namespace, page=page+1)
             filename = string_to_valid_filename(filename0.encode("utf-8"))
             output_path = os.path.join(destdir, filename)
-            existing_files = glob.glob(output_path + ".*")
+            existing_files = glob.glob(escape_glob(output_path) + ".*")
             if existing_files:
-                debug("Skip existing image: %s" % existing_files)
+                debug("Skip existing image: %s" % existing_files[0])
                 images.append(output_path)
-                continue             
+                continue
             relative_page = page - page_start + 1
             widgets.progress_all.set_fraction(float(relative_page-1)/len(page_ids))
             widgets.progress_all.set_text(
@@ -169,11 +174,11 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
                 elapsed_cb=functools.partial(on_elapsed, widgets, "page"))
             
             image_url0 = pysheng.get_image_url_from_page(page_html)
-            # Set a big width to get the maximum quality image
-            image_url = re.sub("w=(\d+)", "w=10000", image_url0)
+            width, height = info["max_resolution"]
+            image_url = re.sub("w=(\d+)", "w=" + str(width), image_url0)
             if not image_url:
-              debug("No image for this page, probably access is restricted")
-              continue            
+                debug("No image for this page, probably access is restricted")
+                continue            
             debug(header + "Download page image: %s" % image_url)
             widgets.progress_current.set_fraction(0.0)
             image_data = yield asyncjobs.ProgressDownloadThreadedTask(
