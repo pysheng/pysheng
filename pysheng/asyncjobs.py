@@ -94,9 +94,10 @@ class Job:
         
     def cancel(self):
         self._check_state("running", "paused")
-        self.current_task.cancel()
-        self.current_task = None
-        self.generator.close()
+        if self.current_task:
+            self.current_task.cancel()
+            self.current_task = None
+            self.generator.close()
         self._state = "cancelled"
 
     def _start_task(self, task, generator):
