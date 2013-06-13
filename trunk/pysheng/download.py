@@ -70,21 +70,26 @@ def get_info(cover_html):
     if not page_ids:
         raise ParsingError, "No page_ids found"
     prefix = pages_info["prefix"].decode("raw_unicode_escape")
+    mw = book_info["max_resolution_image_width"]
+    mh = book_info["max_resolution_image_height"]
     return {
         "prefix": prefix, 
         "page_ids": page_ids,
         "title": book_info["title"],
         "attribution": re.sub("^By\s+", "", book_info["attribution"]),
+        "max_resolution": (mw, mh),
     }
 
 def get_image_url_from_page(html):
     """Get image from a page html."""
     if "/googlebooks/restricted_logo.gif" in html:
-        return 
-    match = re.search(r"preloadImg.src = '([^']*?)'", html)
-    if not match:
-        raise ParsingError, "No image found in HTML page"
-    return match.group(1)
+        return
+    else:
+      match = re.search(r"preloadImg.src = '([^']*?)'", html)
+      if not match:
+          raise ParsingError, "No image found in HTML page"
+      else:
+        return match.group(1)
 
 def get_page_url(prefix, page_id):
     return prefix + "&pg=" + page_id
