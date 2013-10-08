@@ -37,6 +37,11 @@ import pysheng
 
 HEADERS = {"User-Agent": pysheng.AGENT}
 
+def get_max_filename_length():
+    fd = os.open(".", os.O_RDONLY)
+    info = os.fstatvfs(fd)
+    return info.f_namemax
+
 class State:
     def __init__(self):
         self.download_job = None
@@ -82,9 +87,9 @@ def set_book_info(widgets, info):
         widgets.attribution.set_markup(italic("-"))
         widgets.npages.set_markup(italic("-"))
    
-def string_to_valid_filename(s):   
+def string_to_valid_filename(s, lengthlimit=255):
     forbidden_chars = ":;'/\\?%*|\"<>"
-    return "".join(c for c in s if c not in forbidden_chars)
+    return "".join(c for c in s if c not in forbidden_chars)[-lengthlimit:]
         
 def on_elapsed(widgets, name, elapsed, total):
     if total is not None:
@@ -127,6 +132,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         destdir = widgets.destdir.get_text()
         debug = widgets.debug
         set_sensitivity(widgets, check=False, savepdf=False)
+        
         debug("Output directory: %s" % destdir)
         debug("Page_start: %s, Page end: %s" % 
             (adj_int(page_start, +1, 1), adj_int(page_end, +1, "last")))
@@ -139,6 +145,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         widgets.progress_current.set_pulse_step(0.04)
         state.downloaded_images = None
         info = yield _from(get_info(widgets, cover_url, opener))
+        
         if not widgets.page_start.get_text():
             widgets.page_start.set_text(str(1))
         if not widgets.page_end.get_text():
@@ -146,14 +153,15 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]        
         namespace = dict(title=info["title"], attribution=info["attribution"])
         images = []
+        
         for page, page_id in enumerate(page_ids):
             page += page_start
             if namespace["attribution"]:
-                image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"
+                image_file_template = "%(attribution)s - %(title)s - %(page)03d"
             else:
-                image_file_template = "%(title)s.page-%(page)03d"
+                image_file_template = "%(title)s - %(page)03d"
             filename0 = image_file_template % dict(namespace, page=page+1)
-            filename = string_to_valid_filename(filename0.encode("utf-8"))
+            filename = string_to_valid_filename(filename0.encode("utf-8"), 240)
             output_path = os.path.join(destdir, filename)
             existing_files = glob.glob(escape_glob(output_path) + ".*")
             if existing_files:
@@ -196,6 +204,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         debug("Done!")
         restart_buttons(widgets)
         state.downloaded_images = images
+        
         if namespace["attribution"]:
             state.pdf_filename = "%(attribution)s - %(title)s.pdf" % namespace
         else:
