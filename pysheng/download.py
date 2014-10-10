@@ -85,11 +85,11 @@ def get_image_url_from_page(html):
     if "/googlebooks/restricted_logo.gif" in html:
         return
     else:
-      match = re.search(r"preloadImg.src = '([^']*?)'", html)
-      if not match:
-          raise ParsingError, "No image found in HTML page"
-      else:
-        return match.group(1)
+        match = re.search(r"preloadImg.src = '([^']*?)'", html)
+        if not match:
+            raise ParsingError, "No image found in HTML page"
+        else:
+            return match.group(1).decode("string-escape")
 
 def get_page_url(prefix, page_id):
     return prefix + "&pg=" + page_id
