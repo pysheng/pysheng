@@ -18,7 +18,7 @@ Usage
 Using the GUI
 =============
 
-Note that in order to save a PDF you need [http://www.reportlab.com/software/opensource/ ReportLab] installed.
+Note that in order to save a PDF you need [ReportLab](http://www.reportlab.com/software/opensource/) installed.
 
 ```
 $ pysheng-gui
@@ -35,7 +35,7 @@ Command line
 $ pysheng "http://books.google.com/books?id=m5w5PRj5Nj4C"
 ```
 
- * Download a whole book using the command-line and convert the images into a single PDF (requires [http://www.imagemagick.org/script/index.php Imagemagick]). Notice that you can use the Book ID only.
+ * Download a whole book using the command-line and convert the images into a single PDF (requires [Imagemagick](http://www.imagemagick.org/script/index.php)). Notice that you can use the Book ID only.
 
 ```
 $ convert $(pysheng "m5w5PRj5Nj4C") book.pdf
