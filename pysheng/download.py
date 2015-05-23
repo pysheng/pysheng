@@ -18,6 +18,7 @@
 import re
 import sys
 import itertools
+import os
 
 try:
     # Python >= 2.6
@@ -114,6 +115,30 @@ def download_book(url, page_start=0, page_end=None):
         if image_url:
           image_data = download(image_url, opener=opener)
           yield info, page, image_data
+
+def htmlentity2unicode(text):
+    reference_regex = re.compile(u'&(#x?[0-9a-f]+|[a-z]+);', re.IGNORECASE)
+    num10_regex = re.compile(u'#\d+', re.IGNORECASE)
+    result = u''
+    i = 0
+    while True:
+        match = reference_regex.search(text, i)
+        if match is None:
+            result += text[i:]
+            break
+        result += text[i:match.start()]
+        i = match.end()
+        name = match.group(1)
+        if num10_regex.match(name):
+            result += unichr(int(name[1:]))
+    return result
+
+def get_title(url):
+    opener = lib.get_cookies_opener()
+    cover_url = get_cover_url(get_id_from_string(url))
+    cover_html = download(cover_url, opener=opener)
+    info = get_info(cover_html)
+    return htmlentity2unicode(info["title"].encode("utf-8"))
         
 def main(args):
     import optparse
@@ -131,11 +156,14 @@ def main(args):
         return 2
         
     url = pargs[0]
-    image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"
+    title = get_title(url)
+    if os.access(title, os.R_OK) == False:
+        os.mkdir(title)
+    image_file_template = os.path.join(title,"%(page)03d")
     for info, page, image_data in download_book(url, options.page_start, options.page_end):
         namespace = dict(title=info["title"], attribution=info["attribution"])
-        output_file = ((image_file_template+".png") % 
-          dict(namespace, page=page+1)).encode("utf-8")
+        output_file = ((image_file_template+".png") %
+          dict(namespace, page=page+1))
         open(output_file, "wb").write(image_data)
         print output_file
 
