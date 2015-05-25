@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import itertools
+import HTMLParser
 
 try:
     # Python >= 2.6
@@ -46,6 +47,10 @@ def get_id_from_string(s):
 def get_cover_url(book_id):
     url = "http://books.google.com/books"
     return "%s?id=%s&hl=en&printsec=frontcover&source=gbs_ge_summary_r&cad=0" % (url, book_id)
+
+def get_unescape_entities(s):
+    parser = HTMLParser.HTMLParser()
+    return parser.unescape(s)
     
 def get_info(cover_html):
     """Return dictionary with the book info (prefix, page_ids, title, attribution)."""
@@ -76,8 +81,8 @@ def get_info(cover_html):
     return {
         "prefix": prefix, 
         "page_ids": page_ids,
-        "title": book_info["title"],
-        "attribution": re.sub("^By\s+", "", book_info["attribution"]),
+        "title": get_unescape_entities(book_info["title"]),
+        "attribution": get_unescape_entities(re.sub("^By\s+", "", book_info["attribution"])),
         "max_resolution": (mw, mh),
     }
 
