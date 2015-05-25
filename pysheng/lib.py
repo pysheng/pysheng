@@ -19,6 +19,7 @@ import cookielib
 import itertools
 import urllib2
 import urllib
+import errno
 import sys
 import re
 import os
@@ -85,3 +86,10 @@ def create_pdf_from_images(image_paths, output_pdf, pagesize=None, margin=None):
         c.drawImage(image_path, margin, margin, width, height)
         c.showPage()
     c.save()
+    
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST or not os.path.isdir(path):
+            raise

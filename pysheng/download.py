@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 
+import os
 import re
 import sys
 import itertools
@@ -97,13 +98,17 @@ def get_page_url(prefix, page_id):
 def download(*args, **kwargs):
     return lib.download(*args, **dict(kwargs, agent=AGENT))
 
-def download_book(url, page_start=0, page_end=None):
-    """Yield tuples (info, page, image_data) for each page of the book
-       <url> from <page_start> to <page_end>"""
+def get_info_from_url(url):
     opener = lib.get_cookies_opener()
     cover_url = get_cover_url(get_id_from_string(url))
     cover_html = download(cover_url, opener=opener)
-    info = get_info(cover_html)
+    return get_info(cover_html)
+
+def download_book(url, page_start=0, page_end=None):
+    """Yield tuples (info, page, image_data) for each page of the book
+       <url> from <page_start> to <page_end>"""
+    info = get_info_from_url(url)
+    opener = lib.get_cookies_opener()
     page_ids = itertools.islice(info["page_ids"], page_start, page_end)
     
     for page0, page_id in enumerate(page_ids):
@@ -114,7 +119,7 @@ def download_book(url, page_start=0, page_end=None):
         if image_url:
           image_data = download(image_url, opener=opener)
           yield info, page, image_data
-        
+
 def main(args):
     import optparse
     usage = """usage: %prog GOOGLE_BOOK_OR_ID
@@ -131,14 +136,16 @@ def main(args):
         return 2
         
     url = pargs[0]
-    image_file_template = "%(attribution)s - %(title)s.page-%(page)03d"
-    for info, page, image_data in download_book(url, options.page_start, options.page_end):
-        namespace = dict(title=info["title"], attribution=info["attribution"])
-        output_file = ((image_file_template+".png") % 
-          dict(namespace, page=page+1)).encode("utf-8")
-        open(output_file, "wb").write(image_data)
-        print output_file
+    info = get_info_from_url(url)
+    namespace = dict(title=info["title"], attribution=info["attribution"])
+    output_directory = "%(attribution)s - %(title)s" % namespace
+    lib.mkdir_p(output_directory)
+    
+    for page_info, page, image_data in download_book(url, options.page_start, options.page_end):
+        filename = "%03d.png" % (page + 1)
+        output_path = os.path.join(output_directory, filename)
+        open(output_path, "wb").write(image_data)
+        sys.stdout.write(output_path + "\n")
 
-  
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
