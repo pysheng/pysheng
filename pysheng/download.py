@@ -122,8 +122,8 @@ def download_book(url, page_start=0, page_end=None):
         page_html = download(page_url, opener=opener)
         image_url = get_image_url_from_page(page_html)
         if image_url:
-          image_data = download(image_url, opener=opener)
-          yield info, page, image_data
+            image_data = download(image_url, opener=opener)
+            yield info, page, image_data
 
 def main(args):
     import optparse

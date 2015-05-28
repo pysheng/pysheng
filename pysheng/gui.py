@@ -182,22 +182,22 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
                 elapsed_cb=functools.partial(on_elapsed, widgets, "page"))
             
             image_url0 = pysheng.get_image_url_from_page(page_html)
-            width, height = info["max_resolution"]
-            image_url = re.sub("w=(\d+)", "w=" + str(width), image_url0)
-            if not image_url:
+            if not image_url0:
                 debug("No image for this page, probably access is restricted")
-                continue            
-            debug(header + "Download page image: %s" % image_url)
-            widgets.progress_current.set_fraction(0.0)
-            image_data = yield asyncjobs.ProgressDownloadThreadedTask(
-                image_url, opener, headers=HEADERS,
-                elapsed_cb=functools.partial(on_elapsed, widgets, "image"))
-            format = imghdr.what(StringIO.StringIO(image_data)) or "png"
-            debug(header + "Image downloaded (size=%d, format=%s)" % (len(image_data), format))
-            output_path_with_extension = output_path + "." + format
-            createfile(output_path_with_extension, image_data)            
-            debug(header + "Image written: %s" % output_path_with_extension)
-            images.append(output_path_with_extension)
+            else:       
+                width, height = info["max_resolution"]
+                image_url = re.sub("w=(\d+)", "w=" + str(width), image_url0)
+                debug(header + "Download page image: %s" % image_url)
+                widgets.progress_current.set_fraction(0.0)
+                image_data = yield asyncjobs.ProgressDownloadThreadedTask(
+                    image_url, opener, headers=HEADERS,
+                    elapsed_cb=functools.partial(on_elapsed, widgets, "image"))
+                format = imghdr.what(StringIO.StringIO(image_data)) or "png"
+                debug(header + "Image downloaded (size=%d, format=%s)" % (len(image_data), format))
+                output_path_with_extension = output_path + "." + format
+                createfile(output_path_with_extension, image_data)            
+                debug(header + "Image written: %s" % output_path_with_extension)
+                images.append(output_path_with_extension)
 
         widgets.progress_all.set_fraction(1.0)
         widgets.progress_all.set_text("Done")                  
