@@ -120,8 +120,10 @@ def download_book(url, page_start=0, page_end=None):
         page = page0 + page_start
         page_url = get_page_url(info["prefix"], page_id)
         page_html = download(page_url, opener=opener)
-        image_url = get_image_url_from_page(page_html)
-        if image_url:
+        image_url0 = get_image_url_from_page(page_html)
+        if image_url0:
+            width, height = info["max_resolution"]
+            image_url = re.sub("w=(\d+)", "w=" + str(width), image_url0)
             image_data = download(image_url, opener=opener)
             yield info, page, image_data
 
@@ -146,7 +148,7 @@ def main(args):
     output_directory = "%(attribution)s - %(title)s" % namespace
     lib.mkdir_p(output_directory)
     
-    for page_info, page, image_data in download_book(url, options.page_start, options.page_end):
+    for page_info, page, image_data in download_book(url, options.page_start - 1, options.page_end):
         filename = "%03d.png" % (page + 1)
         output_path = os.path.join(output_directory, filename)
         open(output_path, "wb").write(image_data)

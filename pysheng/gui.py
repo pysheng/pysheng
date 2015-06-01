@@ -87,7 +87,7 @@ def set_book_info(widgets, info):
         widgets.attribution.set_markup(italic("-"))
         widgets.npages.set_markup(italic("-"))
    
-def string_to_valid_filename(s, lengthlimit=255):
+def string_to_valid_filename(s, lengthlimit=240):
     forbidden_chars = ":;'/\\?%*|\"<>"
     return "".join(c for c in s if c not in forbidden_chars)[-lengthlimit:]
         
@@ -152,17 +152,15 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             widgets.page_end.set_text(str(len(info["page_ids"])))
         page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]        
         namespace = dict(title=info["title"], attribution=info["attribution"])
+        dirname = string_to_valid_filename("%(attribution)s - %(title)s" % namespace)
+        output_directory = os.path.join(destdir, dirname)
+        lib.mkdir_p(output_directory)
         images = []
         
         for page, page_id in enumerate(page_ids):
             page += page_start
-            if namespace["attribution"]:
-                image_file_template = "%(attribution)s - %(title)s - %(page)03d"
-            else:
-                image_file_template = "%(title)s - %(page)03d"
-            filename0 = image_file_template % dict(namespace, page=page+1)
-            filename = string_to_valid_filename(filename0.encode("utf-8"), 240)
-            output_path = os.path.join(destdir, filename)
+            filename = "%(page)03d" % dict(namespace, page=page+1)
+            output_path = os.path.join(output_directory, filename)
             existing_files = glob.glob(escape_glob(output_path) + ".*")
             if existing_files:
                 debug("Skip existing image: %s" % existing_files[0])
