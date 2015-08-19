@@ -9,6 +9,17 @@ For UNIX systems:
 $ wget http://pysheng.googlecode.com/files/pysheng-VERSION.tgz
 $ tar xvzf pysheng-VERSION.tgz
 $ cd pysheng-VERSION
+```
+
+To install locally:
+
+```
+$ python setup.py install --user
+```
+
+To install system-wide:
+
+```
 $ sudo python setup.py install
 ```
 
