@@ -15,26 +15,26 @@ def normal_generator(gen):
     yield "2"
     yield gen()
     yield "3"
-  
-@supergenerator  
+
+@supergenerator
 def gen1():
     """My docstring"""
     yield "1a"
     yield "2a"
     yield _from(gen2())
     yield "3a"
-  
+
 def gen2():
     yield "2a"
     yield _from(gen3())
     yield "2b"
-  
+
 def gen3():
     yield "3a"
     yield "3b"
-  
+
 # Coroutines
-  
+
 @supergenerator
 def coro1(coro2, coro3):
     yield "start-coro1"
@@ -43,7 +43,7 @@ def coro1(coro2, coro3):
     value = yield _from(coro2(coro3, "there"))
     yield value
     yield "end-coro1"
-        
+
 def coro2(coro3, s):
     yield "start-coro2"
     value = yield _from(coro3(s))
@@ -101,7 +101,7 @@ def coro3_with_exception(s):
 class TestYieldFrom(unittest.TestCase):
     def test_decorator_keeps_docstrings(self):
         self.assertEqual("My docstring", gen1.__doc__)
-            
+
     def test_normal_generator(self):
         result = list(normal_generator(gen2))
         self.assertEqual(4, len(result))
@@ -113,7 +113,7 @@ class TestYieldFrom(unittest.TestCase):
     def test_nested_generator(self):
         result = list(gen1())
         self.assertEqual(['1a', '2a', '2a', '3a', '3b', '2b', '3a'], result)
-        
+
     def test_nested_coroutine(self):
         coro = coro1(coro2, coro3)
         self.assertEqual("start-coro1", coro.send(None))
@@ -163,7 +163,7 @@ class TestYieldFrom(unittest.TestCase):
         self.assertEqual("coro2-catch-there", coro.send(None))
         self.assertEqual("coro2-catch-abc", coro.send("abc"))
         self.assertEqual("end-coro2", coro.send(None))
-        self.assertEqual("end-coro1", coro.send(None))        
+        self.assertEqual("end-coro1", coro.send(None))
         self.assertRaises(StopIteration, coro.send, None)
 
     def test_nested_coroutine_with_catch_two_levels_above_raise(self):
@@ -177,7 +177,7 @@ class TestYieldFrom(unittest.TestCase):
         self.assertEqual("coro1-catch-there", coro.send(None))
         self.assertEqual("end-coro1", coro.send(None))
         self.assertRaises(StopIteration, coro.send, None)
-        
-    
+
+
 if __name__ == '__main__':
     unittest.main()

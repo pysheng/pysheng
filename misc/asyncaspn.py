@@ -3,13 +3,13 @@
 Run asynchronous tasks in gobject using coroutines. Terminology used:
 
   * Job: A coroutine that yield tasks.
-  * Task: A function which returns a callable whose only parameter 
+  * Task: A function which returns a callable whose only parameter
     (task_return) is called with the result of the task.
-    
-Tasks themselves must be asynchronous (they are run in the main thread 
+
+Tasks themselves must be asynchronous (they are run in the main thread
 of the events loop), so you will probably use functions like gobject.idle_add/
-timeout_add/io_add_watch to implement them. If you are unable to write your 
-task in a asynchronous way (or you just can't, i.e. an IO operation), you can 
+timeout_add/io_add_watch to implement them. If you are unable to write your
+task in a asynchronous way (or you just can't, i.e. an IO operation), you can
 always use a generic threaded_task (see example below).
 """
 import gobject
@@ -25,7 +25,7 @@ def start_job(generator):
                 return
             new_task(_task_return)
         # make sure the generator is advanced in the main thread
-        gobject.idle_add(_advance_generator)            
+        gobject.idle_add(_advance_generator)
     _task_return(None)
     return generator
 
@@ -39,9 +39,9 @@ def sleep_task(secs):
             task_return(time.time() - start_time)
         gobject.timeout_add(int(secs * 1000), _on_timeout)
     return _task
-  
+
 import threading
-gobject.threads_init()  
+gobject.threads_init()
 
 def threaded_task(function, *args, **kwargs):
     """Run function(*args, **kwargs) inside a thread and return the result."""
@@ -68,7 +68,7 @@ def myjob(url):
     sys.stderr.write("[slept_for:%0.2f]" % elapsed)
     sys.stderr.write("[start_download:%s]" % url)
     html = yield threaded_task(download, url)
-    sys.stderr.write("[done:%s:%d]" % (url, len(html)))      
+    sys.stderr.write("[done:%s:%d]" % (url, len(html)))
 
 def basso_continuo():
     sys.stderr.write(".")
@@ -78,7 +78,7 @@ urls = ["http://www.google.com", "http://python.com", "http://www.pygtk.org"]
 jobs = [start_job(myjob(url)) for url in urls]
 
 # See how easily can we raise an exception inside a job:
-# gobject.timeout_add(1000, lambda: jobs[0].throw(JobStopped))      
+# gobject.timeout_add(1000, lambda: jobs[0].throw(JobStopped))
 
 gobject.timeout_add(100, basso_continuo)
 loop = gobject.MainLoop()

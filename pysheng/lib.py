@@ -41,16 +41,16 @@ def debug(obj):
     """Write obj to standard error"""
     sys.stderr.write("--- " + tostr(obj) + "\n")
     sys.stderr.flush()
-   
+
 def first(iterable, pred=bool):
     """Return first item in iterator that matches the predicate."""
     for item in iterable:
         if pred(item):
             return item
-                                          
+
 def download(url, opener=None, agent='Mozilla/5.0 (X11; U; Linux x86_64)'):
     """Download a URL, optionally using a urlib2.opener"""
-    opener = opener or urllib2.build_opener() 
+    opener = opener or urllib2.build_opener()
     request = (url if isinstance(url, urllib2.Request) else build_request(url))
     if agent:
         request.add_header('User-Agent', agent)
@@ -65,11 +65,11 @@ def get_cookies_opener(filename=None):
     """Open a cookies file and return a urllib2 opener object"""
     cookie_jar = cookielib.FileCookieJar()
     if filename:
-        cookie_jar.load(filename)    
+        cookie_jar.load(filename)
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie_jar))
     opener.cookie_jar = cookie_jar
     return opener
-  
+
 def create_pdf_from_images(image_paths, output_pdf, pagesize=None, margin=None):
     """Create a pdf from a sequence of images (one page per image)."""
     from reportlab.pdfgen import canvas
@@ -77,7 +77,7 @@ def create_pdf_from_images(image_paths, output_pdf, pagesize=None, margin=None):
     from reportlab.lib.units import cm, mm, inch, pica
     pagesize = pagesize or pagesizes.A4
     margin = margin or 0*cm
-        
+
     page_width, page_height = pagesize
     width = page_width - 2 * margin
     height = page_height - 2 * margin
@@ -86,7 +86,7 @@ def create_pdf_from_images(image_paths, output_pdf, pagesize=None, margin=None):
         c.drawImage(image_path, margin, margin, width, height)
         c.showPage()
     c.save()
-    
+
 def mkdir_p(path):
     try:
         os.makedirs(path)
