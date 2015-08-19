@@ -164,7 +164,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             existing_files = glob.glob(escape_glob(output_path) + ".*")
             if existing_files:
                 debug("Skip existing image: %s" % existing_files[0])
-                images.append(output_path)
+                images.append(existing_files[0])
                 continue
             relative_page = page - page_start + 1
             widgets.progress_all.set_fraction(float(relative_page-1)/len(page_ids))
