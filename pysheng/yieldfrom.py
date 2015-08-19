@@ -10,17 +10,17 @@ class _from(object):
 def supergenerator(genfunc):
     """
     Decorate a generator so it can yield nested generators (using class _from).
-    
+
     @supergenerator
     def mysupergen():
         yield "normal yield"
         yield "one more yield"
         yield _from(othergen())
-        yield _from(yet_othergen()) 
+        yield _from(yet_othergen())
         yield "last yield"
-    
+
     Note that nested generators can, in turn, yield other generators. Nested
-    generators do not have to use the decorator.    
+    generators do not have to use the decorator.
     """
     def _process(gen):
         tosend = None

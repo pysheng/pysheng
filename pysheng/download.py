@@ -26,11 +26,11 @@ try:
     import json
 except ImportError:
     import simplejson as json
-     
+
 import lib
 
 AGENT = "Chrome 5.0"
-    
+
 class ParsingError(Exception):
     pass
 
@@ -51,10 +51,10 @@ def get_cover_url(book_id):
 def get_unescape_entities(s):
     parser = HTMLParser.HTMLParser()
     return parser.unescape(s)
-    
+
 def get_info(cover_html):
     """Return dictionary with the book info (prefix, page_ids, title, attribution)."""
-    tag = lib.first(s for s in cover_html.split("<") 
+    tag = lib.first(s for s in cover_html.split("<")
         if re.search('input[^>]*\s+name="?ie"?', s))
     if tag:
         match = re.search('value="(.*?)"', tag)
@@ -79,7 +79,7 @@ def get_info(cover_html):
     mw = book_info["max_resolution_image_width"]
     mh = book_info["max_resolution_image_height"]
     return {
-        "prefix": prefix, 
+        "prefix": prefix,
         "page_ids": page_ids,
         "title": get_unescape_entities(book_info["title"]),
         "attribution": get_unescape_entities(re.sub("^By\s+", "", book_info["attribution"])),
@@ -115,7 +115,7 @@ def download_book(url, page_start=0, page_end=None):
     info = get_info_from_url(url)
     opener = lib.get_cookies_opener()
     page_ids = itertools.islice(info["page_ids"], page_start, page_end)
-    
+
     for page0, page_id in enumerate(page_ids):
         page = page0 + page_start
         page_url = get_page_url(info["prefix"], page_id)
@@ -131,7 +131,7 @@ def main(args):
     import optparse
     usage = """usage: %prog GOOGLE_BOOK_OR_ID
 
-    Download a Google Book and create a PNG image for each page.""" 
+    Download a Google Book and create a PNG image for each page."""
     parser = optparse.OptionParser(usage)
     parser.add_option('-s', '--page-start', dest='page_start', type="int",
         default=1, help='Start page')
@@ -141,13 +141,13 @@ def main(args):
     if not pargs:
         parser.print_usage()
         return 2
-        
+
     url = pargs[0]
     info = get_info_from_url(url)
     namespace = dict(title=info["title"], attribution=info["attribution"])
     output_directory = "%(attribution)s - %(title)s" % namespace
     lib.mkdir_p(output_directory)
-    
+
     for page_info, page, image_data in download_book(url, options.page_start - 1, options.page_end):
         filename = "%03d.png" % (page + 1)
         output_path = os.path.join(output_directory, filename)

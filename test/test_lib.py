@@ -23,25 +23,25 @@ import os
 
 from pysheng import lib
 
-class TestLibrary(unittest.TestCase):                    
+class TestLibrary(unittest.TestCase):
     def create_temporal(self, data):
         fd, path = tempfile.mkstemp()
         os.write(fd, data)
         os.close(fd)
         return path
-    
+
     # Tests
-    
+
     def test_first(self):
         lst = [1, 2, 3, 4]
         self.assertEqual(lib.first(lst), 1)
         self.assertEqual(lib.first(iter(lst)), 1)
         self.assertEqual(None, lib.first([]))
-              
+
     def test_download(self):
         data = """This is a test\n"""
         path = self.create_temporal(data)
-        self.assertEqual(lib.download("file://%s" % path), data)                
+        self.assertEqual(lib.download("file://%s" % path), data)
 
     def test_build_request(self):
         host = "exampleserver.org"
@@ -52,7 +52,7 @@ class TestLibrary(unittest.TestCase):
         self.assertEqual(request.get_method(), "POST")
         build = lambda d: "&".join("%s=%s" % pair for pair in d.iteritems())
         self.assertEqual(request.get_data(), build(postdata))
-     
-    
+
+
 if __name__ == '__main__':
     unittest.main()

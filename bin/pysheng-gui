@@ -20,7 +20,7 @@ def py2exe_remove_log():
             pass
     sys.stdout = Blackhole()
     sys.stderr = Blackhole()
-    
+
 if __name__ == '__main__':
     py2exe_remove_log()
     sys.exit(main(sys.argv[1:]))

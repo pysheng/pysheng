@@ -56,11 +56,11 @@ def restart_buttons(widgets):
     widgets.progress_current.set_text("")
 
 def createfile(output_path, image_data):
-    open(output_path, "wb").write(image_data)    
+    open(output_path, "wb").write(image_data)
 
 def set_sensitivity(widgets, **kwargs):
     for key, value in kwargs.iteritems():
-        getattr(widgets, key).set_sensitive(value)    
+        getattr(widgets, key).set_sensitive(value)
 
 def get_debug_func(widgets):
     buf = widgets.log.get_buffer()
@@ -86,41 +86,41 @@ def set_book_info(widgets, info):
         widgets.title.set_markup(italic("-"))
         widgets.attribution.set_markup(italic("-"))
         widgets.npages.set_markup(italic("-"))
-   
+
 def string_to_valid_filename(s, lengthlimit=240):
     forbidden_chars = ":;'/\\?%*|\"<>"
     return "".join(c for c in s if c not in forbidden_chars)[-lengthlimit:]
-        
+
 def on_elapsed(widgets, name, elapsed, total):
     if total is not None:
         widgets.progress_current.set_fraction(float(elapsed)/total)
         name += " (%d bytes)" % total
-    else:        
+    else:
         widgets.progress_current.pulse()
-    msg = "Downloading %s..." % name    
+    msg = "Downloading %s..." % name
     widgets.progress_current.set_text("Downloading %s..." % name)
 
 def escape_glob(path):
     transdict = {'[': '[[]', ']': '[]]', '*': '[*]', '?': '[?]'}
     rc = re.compile('|'.join(map(re.escape, transdict)))
     return rc.sub(lambda m: transdict[m.group(0)], path)
-    
+
 # Jobs
 
 def get_info(widgets, url, opener):
     debug = widgets.debug
     html = yield asyncjobs.ProgressDownloadThreadedTask(
-        url, opener, headers=HEADERS, 
+        url, opener, headers=HEADERS,
         elapsed_cb=functools.partial(on_elapsed, widgets, "info"))
     try:
         info = pysheng.get_info(html)
     except ValueError, detail:
         debug("Error parsing page HTML: %s" % str(detail))
         raise
-    debug("Info: attribution=%s" % info["attribution"]) 
+    debug("Info: attribution=%s" % info["attribution"])
     debug("Info: title=%s" % info["title"])
     debug("Info: total pages=%s" % len(info["page_ids"]))
-    set_book_info(widgets, info)        
+    set_book_info(widgets, info)
     raise StopIteration(info)
 
 @supergenerator
@@ -132,31 +132,31 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
         destdir = widgets.destdir.get_text()
         debug = widgets.debug
         set_sensitivity(widgets, check=False, savepdf=False)
-        
+
         debug("Output directory: %s" % destdir)
-        debug("Page_start: %s, Page end: %s" % 
+        debug("Page_start: %s, Page end: %s" %
             (adj_int(page_start, +1, 1), adj_int(page_end, +1, "last")))
         opener = lib.get_cookies_opener()
         book_id = pysheng.get_id_from_string(url)
         debug("Book ID: %s" % book_id)
         cover_url = pysheng.get_cover_url(book_id)
         widgets.progress_all.set_fraction(0.0)
-        widgets.progress_all.set_text('') 
+        widgets.progress_all.set_text('')
         widgets.progress_current.set_pulse_step(0.04)
         state.downloaded_images = None
         info = yield _from(get_info(widgets, cover_url, opener))
-        
+
         if not widgets.page_start.get_text():
             widgets.page_start.set_text(str(1))
         if not widgets.page_end.get_text():
             widgets.page_end.set_text(str(len(info["page_ids"])))
-        page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]        
+        page_ids = info["page_ids"][page_start:adj_int(page_end, +1)]
         namespace = dict(title=info["title"], attribution=info["attribution"])
         dirname = string_to_valid_filename("%(attribution)s - %(title)s" % namespace)
         output_directory = os.path.join(destdir, dirname)
         lib.mkdir_p(output_directory)
         images = []
-        
+
         for page, page_id in enumerate(page_ids):
             page += page_start
             filename = "%(page)03d" % dict(namespace, page=page+1)
@@ -178,11 +178,11 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             page_html = yield asyncjobs.ProgressDownloadThreadedTask(
                 page_url, opener, headers=HEADERS,
                 elapsed_cb=functools.partial(on_elapsed, widgets, "page"))
-            
+
             image_url0 = pysheng.get_image_url_from_page(page_html)
             if not image_url0:
                 debug("No image for this page, access may be restricted")
-            else:       
+            else:
                 width, height = info["max_resolution"]
                 image_url = re.sub("w=(\d+)", "w=" + str(width), image_url0)
                 debug(header + "Download page image: %s" % image_url)
@@ -193,34 +193,34 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
                 image_format = imghdr.what(StringIO.StringIO(image_data)) or "png"
                 debug(header + "Image downloaded (size=%d, format=%s)" % (len(image_data), image_format))
                 output_path_with_extension = output_path + "." + image_format
-                createfile(output_path_with_extension, image_data)            
+                createfile(output_path_with_extension, image_data)
                 debug(header + "Image written: %s" % output_path_with_extension)
                 images.append(output_path_with_extension)
 
         widgets.progress_all.set_fraction(1.0)
-        widgets.progress_all.set_text("Done")                  
+        widgets.progress_all.set_text("Done")
         debug("Done!")
         restart_buttons(widgets)
         state.downloaded_images = images
-        
+
         if namespace["attribution"]:
             state.pdf_filename = "%(attribution)s - %(title)s.pdf" % namespace
         else:
             state.pdf_filename = "%(title)s.pdf" % namespace
-        set_sensitivity(widgets, savepdf=True)        
+        set_sensitivity(widgets, savepdf=True)
     except asyncjobs.JobCancelled:
         return
     except Exception, detail:
         traceback.print_exc()
         debug("job error: %s" % detail)
-        restart_buttons(widgets)    
+        restart_buttons(widgets)
 
 @supergenerator
-def check_book(widgets, url):    
+def check_book(widgets, url):
     set_sensitivity(widgets, url=False, check=False, start=False, cancel=True)
     debug = widgets.debug
     debug("Checking book: %s" % url)
-    try: 
+    try:
         opener = lib.get_cookies_opener()
         book_id = pysheng.get_id_from_string(url)
         debug("Book ID: %s" % book_id)
@@ -240,13 +240,13 @@ def check_book(widgets, url):
         restart_buttons(widgets)
 
 # Widget callbacks
-     
+
 def on_start__clicked(button, widgets, state):
     if state.download_job and state.download_job.is_alive():
         state.download_job.resume()
         set_sensitivity(widgets, pause=True, start=False)
         widgets.debug("Job resumed")
-        return        
+        return
     url = widgets.url.get_text()
     page_start = (int(widgets.page_start.get_text())-1 if widgets.page_start.get_text() else 0)
     page_end = (int(widgets.page_end.get_text())-1 if widgets.page_end.get_text() else None)
@@ -279,20 +279,20 @@ def on_page_end__activate(entry, widgets, state):
         return on_start__clicked(None, widgets, state)
 
 def clean_exit(widgets, state):
-    if state.download_job and state.download_job.is_alive():  
+    if state.download_job and state.download_job.is_alive():
         state.download_job.cancel()
     gtk.main_quit()
-    
+
 def on_exit__clicked(button, widgets, state):
     clean_exit(widgets, state)
 
 def on_window__delete_event(window, event, widgets, state):
     clean_exit(widgets, state)
-                
+
 def on_cancel__clicked(button, widgets, state):
-    if state.download_job and state.download_job.is_alive():    
-        state.download_job.cancel() 
-    if state.check_job and state.check_job.is_alive():    
+    if state.download_job and state.download_job.is_alive():
+        state.download_job.cancel()
+    if state.check_job and state.check_job.is_alive():
         state.check_job.cancel()
     widgets.debug("Job cancelled")
     restart_buttons(widgets)
@@ -312,7 +312,7 @@ def on_browse_destdir__clicked(button, widgets, state):
         widgets.destdir.set_text(directory)
     chooser.destroy()
 
-def on_savepdf__clicked(button, widgets, state):    
+def on_savepdf__clicked(button, widgets, state):
     if not state.downloaded_images or not state.pdf_filename:
         widgets.debug("Error creating PDF")
         return
@@ -320,7 +320,7 @@ def on_savepdf__clicked(button, widgets, state):
         from reportlab.lib import pagesizes
         from reportlab.lib.units import cm
     except ImportError:
-        widgets.debug("You need to install ReportLab (http://www.reportlab.com/)" + 
+        widgets.debug("You need to install ReportLab (http://www.reportlab.com/)" +
             " to create a PDF")
         return
     chooser = gtk.FileChooserDialog(
@@ -334,7 +334,7 @@ def on_savepdf__clicked(button, widgets, state):
     if response == gtk.RESPONSE_OK:
         output_pdf = chooser.get_filename()
         try:
-            lib.create_pdf_from_images(state.downloaded_images, output_pdf, 
+            lib.create_pdf_from_images(state.downloaded_images, output_pdf,
                 pagesize=pagesizes.A4, margin=0*cm)
             widgets.debug("PDF written: %s" % output_pdf)
         except Exception, exception:
@@ -343,7 +343,7 @@ def on_savepdf__clicked(button, widgets, state):
     chooser.destroy()
 
 ###
-                
+
 def set_callbacks(namespace, widgets, state):
     callbacks_mapping = {
         "check": "clicked",
@@ -365,7 +365,7 @@ def set_callbacks(namespace, widgets, state):
             widget = getattr(widgets, widget_name)
             callback = namespace["on_%s__%s" % (widget_name, signal.replace("-", "_"))]
             widget.connect(signal, callback, widgets, state)
-                
+
 def view_init(widgets):
     set_sensitivity(widgets, start=False, check=False, pause=False, cancel=False)
     set_sensitivity(widgets, savepdf=False)
@@ -385,9 +385,9 @@ def load_glade(filename, root, widget_names):
 
 def run(book_url=None):
     widget_names = [
-        "window", "url", "destdir", "check", "start", "cancel", 
-        "pause", "exit", "log", "page_start", "page_end", 
-        "title", "attribution", "npages", "browse_destdir", 
+        "window", "url", "destdir", "check", "start", "cancel",
+        "pause", "exit", "log", "page_start", "page_end",
+        "title", "attribution", "npages", "browse_destdir",
         "progress_all", "progress_current", "savepdf",
     ]
     currentdir = os.path.join(os.path.dirname(__file__))
@@ -396,12 +396,12 @@ def run(book_url=None):
                  "/usr/local/share/pysheng",
                  "/usr/share/pysheng"]
     for dirname in testpaths:
-        filepath = os.path.join(dirname, "main.glade")        
+        filepath = os.path.join(dirname, "main.glade")
         if os.path.isfile(filepath):
             break
     else:
         raise ValueError, "cannot find glade file: main.glade"
-    widgets = load_glade(filepath, "window", widget_names)    
+    widgets = load_glade(filepath, "window", widget_names)
     state = State()
     widgets.debug = get_debug_func(widgets)
     widgets.window.set_title("PySheng v%s: Google Books downloader" % pysheng.VERSION)

@@ -6,27 +6,27 @@ from Queue import Queue
 import gobject
 
 class Job:
-    """Wrap a co-routines that yields asynchronous tasks (see Task class).""" 
+    """Wrap a co-routines that yields asynchronous tasks (see Task class)."""
     def __init__(self, generator):
         self.generator = generator
         self._advance_task(generator.send, None)
-            
+
     def _start_task(self, task):
         return_cb = functools.partial(self._advance_task, self.generator.send)
         exception_cb = functools.partial(self._advance_task, self.generator.throw)
         task.config(return_cb, exception_cb)
         task.run()
-    
+
     def _advance_task(self, genmethod, result=None):
         try:
             task = genmethod(result)
         except StopIteration:
             return
-        self._start_task(task)                    
+        self._start_task(task)
 
 class TaskError(Exception):
     pass
-                
+
 class Task:
     """Base class for asynchronous tasks."""
     def config(self, return_cb, exception_cb):
@@ -34,7 +34,7 @@ class Task:
         self.return_cb = return_cb
         self.exception_cb = exception_cb
 
-    def run(self):        
+    def run(self):
         raise RuntimeError, "Run method must be overriden"
 
 # Tasks examples
@@ -43,26 +43,26 @@ class SleepTask(Task):
     """Sleep for some time and return."""
     def __init__(self, seconds):
         self.seconds = seconds
-        
+
     def run(self):
         def _return():
             self.return_cb()
             return False
         self.source_id = gobject.timeout_add(int(self.seconds * 1000), _return)
-    
+
 class ThreadedTask(Task):
-    """Run a function in a new thread and return its output."""               
+    """Run a function in a new thread and return its output."""
     def __init__(self, fun, *args, **kwargs):
         self.function = (fun, args, kwargs)
-                
+
     def run(self):
         """Start thread and set callback to get the result value."""
-        queue = Queue()        
+        queue = Queue()
         thread = Thread(target=self._thread, args=(self.function, queue))
         thread.setDaemon(True)
         thread.start()
         self.source_id = gobject.timeout_add(50, self._queue_manager, thread, queue)
-    
+
     def _queue_manager(self, thread, queue):
         if queue.empty():
             if not thread.isAlive():
@@ -100,7 +100,7 @@ def my_job(wait, a, b):
     sys.stderr.write("[H2,%s,%s]" % (result1, b))
     result2 = (yield ThreadedTask(heavy_function, result1, b))
     sys.stderr.write("[RES:%s]" % result2)
-    
+
 def other_async_work():
     import sys
     sys.stderr.write(".")
@@ -122,7 +122,7 @@ def main(args):
     entrya.set_text("1")
     entryb.set_text("2")
     start.connect("clicked", on_start, entrya, entryb)
-    for widget in (entrya, entryb, start):    
+    for widget in (entrya, entryb, start):
         box.pack_start(widget)
     window.add(box)
     start.set_flags(gtk.CAN_DEFAULT)
@@ -130,7 +130,7 @@ def main(args):
     entryb.set_activates_default(True)
     window.set_default(start)
     window.show_all()
-    
+
     gobject.timeout_add(100, other_async_work)
     gtk.main()
 

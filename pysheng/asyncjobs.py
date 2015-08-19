@@ -5,14 +5,14 @@ Asynchronous jobs using co-routines and gobject.
 The use of gobject is hardcoded, but it should be easy to change it
 with any other events-based loop library.
 
-The goal of this module is to allow a programmer to write PyGTK apps without 
-resorting to complicated callbacks on blocking functions. The use of 
-threads for some operations (downloading) is required so as to use 
+The goal of this module is to allow a programmer to write PyGTK apps without
+resorting to complicated callbacks on blocking functions. The use of
+threads for some operations (downloading) is required so as to use
 high-level urllib2 functions, but they are avoided whenever possible
-(non-blocking urllib2 calls are feasible using libraries like eventlet 
+(non-blocking urllib2 calls are feasible using libraries like eventlet
 or gevent, take a look on them if using threads is a no-no for you).
 
-More info: 
+More info:
 
 http://code.activestate.com/recipes/577129-run-asynchronous-tasks-using-coroutines/
 """
@@ -55,30 +55,30 @@ class Job:
     """
     An asynchronous job must be instantiated with a generator/co-routine that
     yield asynchronous tasks.
-    
-    States: running (default on start), cancel, paused, cancelled, finished.    
-    """ 
-    
+
+    States: running (default on start), cancel, paused, cancelled, finished.
+    """
+
     def __init__(self, generator):
         self.generator = generator
         self._paused_task = None
         self.current_task = None
         self._state = "running"
         self._advance_task(None, generator, "send", None)
-    
+
     def is_alive(self):
         return (self._state in ("running", "paused"))
 
     def is_paused(self):
         return (self._state in ("paused"))
-    
+
     def join(self, looptime=0.1):
         loop = gobject.MainLoop()
         context = loop.get_context()
         while self._state != "finished":
             context.iteration(False)
-            time.sleep(looptime)        
-        
+            time.sleep(looptime)
+
     def pause(self):
         self._check_state("running")
         self.current_task.pause()
@@ -91,7 +91,7 @@ class Job:
         if self._paused_task:
             self._advance_task(*self._paused_task)
             self._paused_task = None
-        
+
     def cancel(self):
         self._check_state("running", "paused")
         if self.current_task:
@@ -102,29 +102,29 @@ class Job:
 
     def _start_task(self, task, generator):
         self.current_task = task
-        task.config(functools.partial(self._advance_task, task, generator, "send"), 
+        task.config(functools.partial(self._advance_task, task, generator, "send"),
             functools.partial(self._advance_task, task, generator, "throw"))
         task.run()
         self._state = "running"
 
     def _advance_task(self, task, generator, method, result=None):
-        # Instead of advancing the task/coroutine right away, we defer 
+        # Instead of advancing the task/coroutine right away, we defer
         # the operation so it's run away from propagate_exceptions() that
         # could catches exceptions in the coroutine
         if task != self.current_task:
-            raise TaskError("only the current task can reply to the coroutine")                
+            raise TaskError("only the current task can reply to the coroutine")
         if self._state == "running":
             gobject.idle_add(self._advance_task_cb, generator, method, result)
         elif self._state == "paused":
             self._paused_task = (task, generator, method, result)
-    
+
     def _advance_task_cb(self, generator, method, result):
         self.current_task = None
         while 1:
             generator, method, result = self._advance_task_step(generator, method, result)
             if not generator:
                 return
-            elif method == "new_task": 
+            elif method == "new_task":
                 task = result
                 break
         self._start_task(task, generator)
@@ -132,7 +132,7 @@ class Job:
     def _advance_task_step(self, generator, method, result):
         try:
             new_task = getattr(generator, method)(result)
-        except StopIteration, exc:            
+        except StopIteration, exc:
             self._state = "finished"
             return None, None, None
         except Exception, exc:
@@ -141,7 +141,7 @@ class Job:
             raise
         if isinstance(new_task, Task):
             task = new_task
-            return generator, "new_task", task 
+            return generator, "new_task", task
         else:
             msg = "A job can only yield tasks, got: %s" % \
                 new_task
@@ -158,13 +158,13 @@ class Job:
 def propagate_exceptions(method_or_task):
     """
     Decorator to wrap task callbacks (either methods or functions).
-    
-    This decorator ensures that exceptions raised inside callbacks 
+
+    This decorator ensures that exceptions raised inside callbacks
     of a task are propagated to the caller (the coroutine),
     otherwise both the task and the job may stuck forever.
-    """  
+    """
     def _propagate_wrapper(task, function, *args, **kwargs):
-        try:            
+        try:
             return function(*args, **kwargs)
         except Exception, exc:
             task.exception_cb(exc)
@@ -188,10 +188,10 @@ def propagate_exceptions(method_or_task):
 class Task:
     """
     Base class for asynchronous tasks.
-    
+
     Tasks must override methods run and, optionally, cancel, pause and resume.
-    In order to get robust tasks, make sure that all asynchronous callbacks 
-    that may raise an exception use a @propagate_exceptions decorator. 
+    In order to get robust tasks, make sure that all asynchronous callbacks
+    that may raise an exception use a @propagate_exceptions decorator.
     """
     def config(self, return_cb, exception_cb):
         self.return_cb = return_cb
@@ -202,7 +202,7 @@ class Task:
 
     def cancel(self):
         pass
-        
+
     def pause(self):
         pass
 
@@ -213,7 +213,7 @@ class SleepTask(Task):
     """Sleep for some time and return the elapsed time for the job."""
     def __init__(self, seconds):
         self.seconds = seconds
-        
+
     def run(self):
         self.source_id = gobject.timeout_add(int(self.seconds * 1000), self._return)
         self.start_time = time.time()
@@ -223,51 +223,51 @@ class SleepTask(Task):
         gobject.source_remove(self.source_id)
 
     def pause(self):
-        gobject.source_remove(self.source_id)        
+        gobject.source_remove(self.source_id)
         self.elapsed_time += time.time() - self.start_time
 
     def resume(self):
         remaining_time = self.seconds - self.elapsed_time
         self.source_id = gobject.timeout_add(int(remaining_time * 1000), self._return)
         self.start_time = time.time()
-        
+
     def _return(self):
         self.elapsed_time += time.time() - self.start_time
         self.return_cb(self.elapsed_time)
-        return False              
-    
+        return False
+
 # Some ideas for threaded classes:
 #
 # - ThreadedEventTask: function has cancel and pause event arguments and can
-#                      respond to these events.        
-# - ThreadedGeneratorTask: run a generator instead of a normal function and 
+#                      respond to these events.
+# - ThreadedGeneratorTask: run a generator instead of a normal function and
 #                          call a callback for each yielded value
-                       
+
 class ThreadedTask(Task):
     """
     Run a function in a new thread and return the result.
-    
+
     The function being run knows nothing about threads or events, so there is no
-    way to cancel or pause it. Therefore, the class does not implement these 
-    methods either.    
+    way to cancel or pause it. Therefore, the class does not implement these
+    methods either.
     """
     def __init__(self, fun, *args, **kwargs):
         self.function = (fun, args, kwargs)
 
     def run(self):
-        queue = Queue()        
+        queue = Queue()
         thread = Thread(target=self._thread_manager, args=(self.function, queue))
         thread.setDaemon(True)
         thread.start()
-        self.source_id = gobject.timeout_add(50, self._thread_receiver, queue)        
-    
+        self.source_id = gobject.timeout_add(50, self._thread_receiver, queue)
+
     @propagate_exceptions
     def _thread_receiver(self, queue):
         if queue.empty():
             if not thread.isAlive():
                 self.exception_cb(TaskError("thread is dead but the queue is empty"))
-                return False            
-            return True                
+                return False
+            return True
         rtype, rvalue = queue.get()
         if rtype == "return":
             self.return_cb(rvalue)
@@ -292,25 +292,25 @@ def build_request(url, postdata=None):
 
 def connect_opener(url, opener=None, headers=None):
     """Connect an opener to a url and return (response, content-length)."""
-    opener = opener or urllib2.build_opener() 
+    opener = opener or urllib2.build_opener()
     request = (url if isinstance(url, urllib2.Request) else build_request(url))
     for key, value in (headers or {}).iteritems():
         request.add_header(key, value)
     response = opener.open(request)
     content_length = response.headers.getheaders("Content-Length")
     return response, (int(content_length[0]) if content_length else None)
-    
-       
+
+
 class ProgressDownloadThreadedTask(Task):
     """
-    Download a resource given its URL using urllib2.urlopen with an optional  
+    Download a resource given its URL using urllib2.urlopen with an optional
     opener (urllib2.Request object) and some HTTP headers (dictionary),
     and return the downloaded data.
-    
-    The task calls 'elapsed_cb' every time a chunk of data has been 
-    downloaded, the argument being (elapsed, total). Note that the total bytes 
-    field will only be set if the response contains a valid 'Content-Length' 
-    header, otherwise it default to None. 
+
+    The task calls 'elapsed_cb' every time a chunk of data has been
+    downloaded, the argument being (elapsed, total). Note that the total bytes
+    field will only be set if the response contains a valid 'Content-Length'
+    header, otherwise it default to None.
     """
     def __init__(self, url, opener=None, headers=None, elapsed_cb=None, chunk_size=1024):
         self.url = url
@@ -328,26 +328,26 @@ class ProgressDownloadThreadedTask(Task):
         self.thread.setDaemon(True)
         self.thread.start()
         self.current_size = 0
-        self._thread_id = gobject.timeout_add(50, self._thread_receiver)        
+        self._thread_id = gobject.timeout_add(50, self._thread_receiver)
 
     def pause(self):
         self.pause_event.set()
-    
+
     def resume(self):
         self.pause_event.clear()
 
     def cancel(self):
         self.cancel_event.set()
         gobject.source_remove(self._thread_id)
-        
+
     @propagate_exceptions
     def _thread_receiver(self):
         if self.pause_event.isSet():
-            return True        
+            return True
         elif not self.thread.isAlive() and self.queue.empty():
             self.exception_cb(TaskError("thread is dead but the queue is empty"))
-            return False 
-        while not self.queue.empty():    
+            return False
+        while not self.queue.empty():
             result = self.queue.get()
             if not result:
                 return False
@@ -376,7 +376,7 @@ class ProgressDownloadThreadedTask(Task):
     def _thread_manager(self):
         try:
             request, size = connect_opener(self.url, self.opener, self.headers)
-            while 1:                
+            while 1:
                 data = request.read(self.chunk_size)
                 if self.cancel_event.isSet():
                     self.queue.put(None)
