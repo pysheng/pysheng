@@ -190,9 +190,9 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
                 image_data = yield asyncjobs.ProgressDownloadThreadedTask(
                     image_url, opener, headers=HEADERS,
                     elapsed_cb=functools.partial(on_elapsed, widgets, "image"))
-                format = imghdr.what(StringIO.StringIO(image_data)) or "png"
-                debug(header + "Image downloaded (size=%d, format=%s)" % (len(image_data), format))
-                output_path_with_extension = output_path + "." + format
+                image_format = imghdr.what(StringIO.StringIO(image_data)) or "png"
+                debug(header + "Image downloaded (size=%d, format=%s)" % (len(image_data), image_format))
+                output_path_with_extension = output_path + "." + image_format
                 createfile(output_path_with_extension, image_data)            
                 debug(header + "Image written: %s" % output_path_with_extension)
                 images.append(output_path_with_extension)
