@@ -181,7 +181,7 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
             
             image_url0 = pysheng.get_image_url_from_page(page_html)
             if not image_url0:
-                debug("No image for this page, probably access is restricted")
+                debug("No image for this page, access may be restricted")
             else:       
                 width, height = info["max_resolution"]
                 image_url = re.sub("w=(\d+)", "w=" + str(width), image_url0)
