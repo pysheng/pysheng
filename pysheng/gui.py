@@ -128,14 +128,14 @@ def download_book(widgets, state, url, page_start=0, page_end=None):
     """Yield (info, page, image_data) for pages from page_start to page_end"""
     try:
         set_sensitivity(widgets, start=False, pause=True, cancel=True,
-            browse_destdir=False, page_start=False, page_end=False)
+                        browse_destdir=False, page_start=False, page_end=False)
         destdir = widgets.destdir.get_text()
         debug = widgets.debug
         set_sensitivity(widgets, check=False, savepdf=False)
 
         debug("Output directory: %s" % destdir)
         debug("Page_start: %s, Page end: %s" %
-            (adj_int(page_start, +1, 1), adj_int(page_end, +1, "last")))
+              (adj_int(page_start, +1, 1), adj_int(page_end, +1, "last")))
         opener = lib.get_cookies_opener()
         book_id = pysheng.get_id_from_string(url)
         debug("Book ID: %s" % book_id)
@@ -321,7 +321,7 @@ def on_savepdf__clicked(button, widgets, state):
         from reportlab.lib.units import cm
     except ImportError:
         widgets.debug("You need to install ReportLab (http://www.reportlab.com/)" +
-            " to create a PDF")
+                      " to create a PDF")
         return
     chooser = gtk.FileChooserDialog(
         title="Save PDF",
@@ -335,7 +335,7 @@ def on_savepdf__clicked(button, widgets, state):
         output_pdf = chooser.get_filename()
         try:
             lib.create_pdf_from_images(state.downloaded_images, output_pdf,
-                pagesize=pagesizes.A4, margin=0*cm)
+                                       pagesize=pagesizes.A4, margin=0*cm)
             widgets.debug("PDF written: %s" % output_pdf)
         except Exception, exception:
             traceback.print_exc()
