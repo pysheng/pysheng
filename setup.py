@@ -16,7 +16,7 @@ setup_kwargs = dict(
     description='Download books from Google Books',
     author='Arnau Sanchez',
     author_email='tokland@gmail.com',
-    url='http://code.google.com/p/Download books from Google Books',
+    url='https://github.com/tokland/pysheng',
     packages=[
         'pysheng/'
     ],
