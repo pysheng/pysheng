@@ -137,6 +137,12 @@ def main(args):
         default=1, help='Start page')
     parser.add_option('-e', '--page-end', dest='page_end', type="int",
         default=None, help='End page')
+    parser.add_option('-n', '--no-redownload', dest='noredownload',
+        action="store_true", default=False,
+        help='Do not download pages if they exist')
+    parser.add_option('-q', '--quiet', dest='quiet',
+        action="store_true", default=False,
+        help='Do not print messages to the terminal')
     options, pargs = parser.parse_args(args)
     if not pargs:
         parser.print_usage()
@@ -148,11 +154,17 @@ def main(args):
     output_directory = "%(attribution)s - %(title)s" % namespace
     lib.mkdir_p(output_directory)
 
-    for page_info, page, image_data in download_book(url, options.page_start - 1, options.page_end):
+    for page_info, page, image_data in\
+            download_book(url, options.page_start - 1, options.page_end):
         filename = "%03d.png" % (page + 1)
         output_path = os.path.join(output_directory, filename)
-        open(output_path, "wb").write(image_data)
-        sys.stdout.write(output_path + "\n")
+        if not ((os.path.isfile(output_path) and
+                 options.noredownload)):
+            open(output_path, "wb").write(image_data)
+            if not options.quiet:
+                print 'Downloaded {}'.format(output_path)
+        elif not options.quiet:
+            print 'Output file {} exists'.format(output_path)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
