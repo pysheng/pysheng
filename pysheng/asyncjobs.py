@@ -37,19 +37,21 @@ from Queue import Queue, Empty
 from io import BytesIO
 import urllib2
 import functools
-import types
 
 import gobject
 gobject.threads_init()
 
 JobCancelled = GeneratorExit
 
+
 class TaskError(Exception):
     """Something wrong was detected inside a task and it must be aborted."""
     def __init__(self, reason):
         self.reason = reason
+
     def __str__(self):
         return str(self.reason)
+
 
 class Job:
     """
@@ -102,8 +104,10 @@ class Job:
 
     def _start_task(self, task, generator):
         self.current_task = task
-        task.config(functools.partial(self._advance_task, task, generator, "send"),
-            functools.partial(self._advance_task, task, generator, "throw"))
+        task.config(functools.partial(self._advance_task, task, generator,
+                                      "send"),
+                    functools.partial(self._advance_task, task, generator,
+                                      "throw"))
         task.run()
         self._state = "running"
 
@@ -121,7 +125,8 @@ class Job:
     def _advance_task_cb(self, generator, method, result):
         self.current_task = None
         while 1:
-            generator, method, result = self._advance_task_step(generator, method, result)
+            generator, method, result = \
+                self._advance_task_step(generator, method, result)
             if not generator:
                 return
             elif method == "new_task":
@@ -145,15 +150,16 @@ class Job:
         else:
             msg = "A job can only yield tasks, got: %s" % \
                 new_task
-            raise ValueError, msg
+            raise ValueError(msg)
 
     def _check_state(self, *expected):
         if self._state not in expected:
             msg = "Job current state is '%s', expected was '%s'" % \
                 (self._state, "/".join(expected))
-            raise ValueError, msg
+            raise ValueError(msg)
 
-### Tasks
+# Tasks
+
 
 def propagate_exceptions(method_or_task):
     """
@@ -169,21 +175,27 @@ def propagate_exceptions(method_or_task):
         except Exception, exc:
             task.exception_cb(exc)
             raise
-            #return
+            # return
     if callable(method_or_task):
         method = method_or_task
+
         def _wrapper(task, *args, **kwargs):
             return _propagate_wrapper(task, method, task, *args, **kwargs)
         return _wrapper
     elif isinstance(method_or_task, Task):
         task = method_or_task
+
         def _decorator(function):
+
             def _wrapper(*args, **kwargs):
                 return _propagate_wrapper(task, function, *args, **kwargs)
             return _wrapper
         return _decorator
+
     else:
-        raise ValueError, "Argument should be either a Task method or a Task instance"
+        raise ValueError('Argument should be either a Task method '
+                         'or a Task instance')
+
 
 class Task:
     """
@@ -198,7 +210,7 @@ class Task:
         self.exception_cb = exception_cb
 
     def run(self):
-        raise RuntimeError, "Run method must be overriden by children classes"
+        raise RuntimeError('Run method must be overriden by children classes')
 
     def cancel(self):
         pass
@@ -209,13 +221,15 @@ class Task:
     def resume(self):
         pass
 
+
 class SleepTask(Task):
     """Sleep for some time and return the elapsed time for the job."""
     def __init__(self, seconds):
         self.seconds = seconds
 
     def run(self):
-        self.source_id = gobject.timeout_add(int(self.seconds * 1000), self._return)
+        self.source_id = gobject.timeout_add(int(self.seconds * 1000),
+                                             self._return)
         self.start_time = time.time()
         self.elapsed_time = 0.0
 
@@ -228,7 +242,8 @@ class SleepTask(Task):
 
     def resume(self):
         remaining_time = self.seconds - self.elapsed_time
-        self.source_id = gobject.timeout_add(int(remaining_time * 1000), self._return)
+        self.source_id = gobject.timeout_add(int(remaining_time * 1000),
+                                             self._return)
         self.start_time = time.time()
 
     def _return(self):
@@ -243,12 +258,13 @@ class SleepTask(Task):
 # - ThreadedGeneratorTask: run a generator instead of a normal function and
 #                          call a callback for each yielded value
 
+
 class ThreadedTask(Task):
     """
     Run a function in a new thread and return the result.
 
-    The function being run knows nothing about threads or events, so there is no
-    way to cancel or pause it. Therefore, the class does not implement these
+    The function being run knows nothing about threads or events, so there is
+    no way to cancel or pause it. Therefore, the class does not implement these
     methods either.
     """
     def __init__(self, fun, *args, **kwargs):
@@ -256,7 +272,8 @@ class ThreadedTask(Task):
 
     def run(self):
         queue = Queue()
-        thread = Thread(target=self._thread_manager, args=(self.function, queue))
+        thread = Thread(target=self._thread_manager,
+                        args=(self.function, queue))
         thread.setDaemon(True)
         thread.start()
         self.source_id = gobject.timeout_add(50, self._thread_receiver, queue)
@@ -265,7 +282,8 @@ class ThreadedTask(Task):
     def _thread_receiver(self, queue):
         if queue.empty():
             if not thread.isAlive():
-                self.exception_cb(TaskError("thread is dead but the queue is empty"))
+                self.exception_cb(TaskError('thread is dead but the queue '
+                                            'is empty'))
                 return False
             return True
         rtype, rvalue = queue.get()
@@ -290,6 +308,7 @@ def build_request(url, postdata=None):
     data = (urllib.urlencode(postdata) if postdata else None)
     return urllib2.Request(url, data)
 
+
 def connect_opener(url, opener=None, headers=None):
     """Connect an opener to a url and return (response, content-length)."""
     opener = opener or urllib2.build_opener()
@@ -312,7 +331,8 @@ class ProgressDownloadThreadedTask(Task):
     field will only be set if the response contains a valid 'Content-Length'
     header, otherwise it default to None.
     """
-    def __init__(self, url, opener=None, headers=None, elapsed_cb=None, chunk_size=1024):
+    def __init__(self, url, opener=None, headers=None, elapsed_cb=None,
+                 chunk_size=1024):
         self.url = url
         self.opener = opener
         self.headers = headers
@@ -345,7 +365,8 @@ class ProgressDownloadThreadedTask(Task):
         if self.pause_event.isSet():
             return True
         elif not self.thread.isAlive() and self.queue.empty():
-            self.exception_cb(TaskError("thread is dead but the queue is empty"))
+            self.exception_cb(TaskError('thread is dead but the queue is '
+                                        'empty'))
             return False
         while not self.queue.empty():
             result = self.queue.get()
@@ -390,7 +411,8 @@ class ProgressDownloadThreadedTask(Task):
                             return
                         time.sleep(0.1)
                     self.queue.put(dict(key="restart", size=size))
-                    request, size = connect_opener(self.url, self.opener, self.headers)
+                    request, size = connect_opener(self.url, self.opener,
+                                                   self.headers)
                     continue
                 self.queue.put(dict(key="data", data=data, size=size))
                 if not data:

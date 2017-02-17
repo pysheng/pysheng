@@ -2,10 +2,12 @@
 """Pure Python implementation of PEP-380 (yield from)."""
 from functools import wraps
 
+
 class _from(object):
     """Wrap a nested generator call in a supergenerator."""
     def __init__(self, genfunc):
         self.genfunc = genfunc
+
 
 def supergenerator(genfunc):
     """
@@ -44,6 +46,7 @@ def supergenerator(genfunc):
             else:
                 new_tosend = (yield yielded)
             tosend = new_tosend
+
     @wraps(genfunc)
     def _wrapper(*args, **kwargs):
         return _process(genfunc(*args, **kwargs))
