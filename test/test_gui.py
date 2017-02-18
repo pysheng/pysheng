@@ -10,29 +10,36 @@ from pysheng import gui
 TESTS_DIR = os.path.abspath(os.path.dirname(__file__))
 HTML_DIR = os.path.join(TESTS_DIR, "html")
 
+
 def refresh_gui(delay=0.0):
-  while gtk.events_pending():
-      gtk.main_iteration_do(block=False)
-  time.sleep(delay)
+    while gtk.events_pending():
+        gtk.main_iteration_do(block=False)
+    time.sleep(delay)
+
 
 class PyshengGUITest(unittest.TestCase):
     def setUp(self):
         self.widgets, self.state = gui.run()
         get_info_original = pysheng.get_info
+
         def get_info_stub(html):
             info = get_info_original(html)
             info["page_ids"] = info["page_ids"][:3]
             return info
         pysheng.get_info = get_info_stub
+
         def get_cover_url_stub(book_id):
             return "file://" + os.path.join(HTML_DIR, "cover.html")
+
         def get_page_url_stub(prefix, page_id):
             return "file://" + os.path.join(HTML_DIR, "page.html")
+
         def get_image_url_from_page_stub(page_html):
             return "file://" + os.path.join(HTML_DIR, "image.png")
         pysheng.get_cover_url = get_cover_url_stub
         pysheng.get_page_url = get_page_url_stub
         pysheng.get_image_url_from_page = get_image_url_from_page_stub
+
         def createfile_stub(path, data):
             pass
         gui.createfile = createfile_stub
@@ -72,7 +79,8 @@ class PyshengGUITest(unittest.TestCase):
         self.assertNotSensitive("check", "start", "pause")
         self.assertSensitive("cancel")
         self.complete_job("check")
-        self.assertEqual("Artistic Theory in Italy", self.widgets.title.get_text())
+        self.assertEqual("Artistic Theory in Italy",
+                         self.widgets.title.get_text())
         self.assertEqual("Anthony Blunt", self.widgets.attribution.get_text())
         self.assertEqual("3", self.widgets.npages.get_text())
         self.assertSensitive("url", "check", "start")
@@ -95,11 +103,11 @@ class PyshengGUITest(unittest.TestCase):
         self.widgets.start.clicked()
         refresh_gui()
         self.assertNotSensitive("check", "start", "browse_destdir",
-            "page_start", "page_end")
+                                "page_start", "page_end")
         self.assertSensitive("cancel")
         self.complete_job("download")
         self.assertSensitive("url", "check", "start", "browse_destdir",
-            "page_start", "page_end")
+                             "page_start", "page_end")
 
     def test_start_cancel_process(self):
         self.widgets.url.set_text("abookid")

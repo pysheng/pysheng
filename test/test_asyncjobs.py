@@ -24,7 +24,9 @@ import functools
 from pysheng import asyncjobs
 from pysheng.yieldfrom import supergenerator, _from
 
+
 TESTS_DIR = os.path.abspath(os.path.dirname(__file__))
+
 
 class TestTask(asyncjobs.Task):
     def __init__(self):
@@ -59,9 +61,11 @@ class TestTask(asyncjobs.Task):
             raise exception
         _callback()
 
+
 class State:
     def __init__(self):
         self.job_result = None
+
 
 def test_job(state, force_continue_after_cancel=False):
     try:
@@ -79,6 +83,7 @@ def test_job(state, force_continue_after_cancel=False):
         state.job_result2 = "!cancelled"
     except Exception, ex:
         state.job_result2 = ex
+
 
 class TestAsyncJobs(unittest.TestCase):
     def setUp(self):
@@ -137,14 +142,16 @@ class TestAsyncJobs(unittest.TestCase):
 
     def test_exception_in_task_is_propagated_to_job_when_using_decorator(self):
         self.assertRaises(RuntimeError,
-            self.job.current_task.do_action, "runtime-error")
+                          self.job.current_task.do_action, "runtime-error")
         self.tick_events()
         self.assertFalse(self.job.is_alive())
         self.assertEqual(RuntimeError, type(self.state.job_result))
 
     def test_exception_in_task_is_propagated_on_protected_callback(self):
         self.assertRaises(RuntimeError,
-            self.job.current_task.do_action_with_function_decorator, RuntimeError)
+                          self.job.current_task.
+                          do_action_with_function_decorator,
+                          RuntimeError)
         self.tick_events()
         self.assertFalse(self.job.is_alive())
         self.assertEqual(RuntimeError, type(self.state.job_result))
@@ -168,18 +175,22 @@ class TestAsyncJobs(unittest.TestCase):
 
 # Threaded task
 
+
 def threaded_task(state, loop, fun, *args, **kwargs):
     state.result = None
     state.result = yield asyncjobs.ThreadedTask(fun, *args, **kwargs)
 
+
 def myfunc(x, y):
     return x + y
+
 
 class TestThreadedTask(unittest.TestCase):
     def setUp(self):
         self.state = State()
         self.loop = gobject.MainLoop()
-        self.job = asyncjobs.Job(threaded_task(self.state, self.loop, myfunc, 2, 3))
+        self.job = asyncjobs.Job(threaded_task(self.state, self.loop, myfunc,
+                                 2, 3))
 
     def test_task(self):
         self.job.join()
@@ -187,6 +198,7 @@ class TestThreadedTask(unittest.TestCase):
         self.assertFalse(self.job.is_alive())
 
 # Sleep task
+
 
 def sleep_task(state, loop, seconds):
     state.result = None
@@ -208,14 +220,18 @@ class TestSleepTask(unittest.TestCase):
 
 # Threaded progress download task
 
+
 def threaded_task(state, loop, url):
     state.result = None
     cb = functools.partial(elapsed_cb, state)
     state.callback = []
-    state.result = yield asyncjobs.ProgressDownloadThreadedTask(url, elapsed_cb=cb)
+    state.result = \
+        yield asyncjobs.ProgressDownloadThreadedTask(url, elapsed_cb=cb)
+
 
 def elapsed_cb(state, elapsed, total):
     state.callback.append((elapsed, total))
+
 
 class TestThreadedTask(unittest.TestCase):
     def setUp(self):
@@ -223,7 +239,8 @@ class TestThreadedTask(unittest.TestCase):
         self.loop = gobject.MainLoop()
         self.filepath = os.path.abspath(__file__)
         self.url = "file://" + self.filepath
-        self.job = asyncjobs.Job(threaded_task(self.state, self.loop, self.url))
+        self.job = asyncjobs.Job(threaded_task(self.state, self.loop,
+                                 self.url))
 
     def test_task(self):
         self.job.join()
