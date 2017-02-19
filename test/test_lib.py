@@ -16,12 +16,11 @@
 # along with this software.  If not, see <http://www.gnu.org/licenses/>
 
 import unittest
-import StringIO
 import tempfile
-import sys
 import os
 
 from pysheng import lib
+
 
 class TestLibrary(unittest.TestCase):
     def create_temporal(self, data):

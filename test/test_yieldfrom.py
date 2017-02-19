@@ -1,13 +1,15 @@
 #!/usr/bin/python
-import unittest
-import types
-import sys
 import os
+import sys
+import types
+import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pysheng.yieldfrom import supergenerator, _from
 
 # Generators
+
 
 @supergenerator
 def normal_generator(gen):
@@ -15,6 +17,7 @@ def normal_generator(gen):
     yield "2"
     yield gen()
     yield "3"
+
 
 @supergenerator
 def gen1():
@@ -24,16 +27,19 @@ def gen1():
     yield _from(gen2())
     yield "3a"
 
+
 def gen2():
     yield "2a"
     yield _from(gen3())
     yield "2b"
+
 
 def gen3():
     yield "3a"
     yield "3b"
 
 # Coroutines
+
 
 @supergenerator
 def coro1(coro2, coro3):
@@ -44,11 +50,13 @@ def coro1(coro2, coro3):
     yield value
     yield "end-coro1"
 
+
 def coro2(coro3, s):
     yield "start-coro2"
     value = yield _from(coro3(s))
     yield value
     raise StopIteration("end-coro2")
+
 
 def coro3(s):
     yield "start-coro3"
@@ -58,6 +66,7 @@ def coro3(s):
     raise StopIteration("end-coro3")
 
 # Coroutines variations
+
 
 @supergenerator
 def coro1_with_catch(coro2, coro3):
@@ -74,10 +83,12 @@ def coro1_with_catch(coro2, coro3):
         yield "coro1-catch-there"
     yield "end-coro1"
 
+
 def coro2_with_no_return(coro3, s):
     yield "start-coro2"
     value = yield _from(coro3(s))
     yield value
+
 
 def coro2_with_catch(coro3, s):
     yield "start-coro2"
@@ -88,6 +99,7 @@ def coro2_with_catch(coro3, s):
         yield "coro2-catch-%s" % value
     raise StopIteration("end-coro2")
 
+
 def coro3_with_exception(s):
     yield "start-coro3"
     value = "start"
@@ -97,6 +109,7 @@ def coro3_with_exception(s):
     raise StopIteration("end-coro3")
 
 #####
+
 
 class TestYieldFrom(unittest.TestCase):
     def test_decorator_keeps_docstrings(self):
@@ -150,7 +163,7 @@ class TestYieldFrom(unittest.TestCase):
         self.assertEqual("end-coro1", coro.send(None))
         self.assertRaises(StopIteration, coro.send, None)
 
-    def test_nested_coroutine_with_catch_and_which_yields_the_result_of_thow(self):
+    def test_nested_coroutine_with_catch_which_yields_the_result_of_thow(self):
         coro = coro1(coro2_with_catch, coro3_with_exception)
         self.assertEqual("start-coro1", coro.send(None))
         self.assertEqual("start-coro2", coro.send(None))
