@@ -23,7 +23,7 @@ setup_kwargs = dict(
     scripts=[
         'bin/pysheng',
         'bin/pysheng-gui'
-	],
+        ],
     license='GNU Public License v3.0',
     long_description=' '.join(__doc__.strip().splitlines()),
     data_files=[
@@ -41,7 +41,7 @@ setup_kwargs = dict(
         'Topic :: Internet :: WWW/HTTP'
     ],
     options={
-        'py2exe' : {
+        'py2exe': {
             'packages': 'encodings',
             'includes': 'cairo, pango, pangocairo, atk, gobject'
         },
