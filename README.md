@@ -1,4 +1,4 @@
-*NOTE: I am not actively developing this package anymore, sorry!*
+*NOTE: Pysheng is lightly developed, but maintence patches are welcomed.*
 
 Download books from Google Books as PNG images. It can be run either from the command-line or using a simple GUI (graphical interface). It should work out-of-the box for Unix systems (GNU/Linux, BSD) and (hopefully) for Windows.
 
