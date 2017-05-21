@@ -146,42 +146,37 @@ def download_book(url, page_start=0, page_end=None):
 
 
 def main(args):
-    import optparse
-    usage = """usage: %prog GOOGLE_BOOK_OR_ID
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--page-start', dest='page_start', type=int,
+                        default=1, help='Start page')
+    parser.add_argument('-e', '--page-end', dest='page_end', type=int,
+                        default=None, help='End page')
+    parser.add_argument('-n', '--no-redownload', dest='noredownload',
+                        action="store_true", default=False,
+                        help='Do not re-download pages if they exist locally')
+    parser.add_argument('-q', '--quiet', dest='quiet',
+                        action="store_true", default=False,
+                        help='Do not print messages to the terminal')
+    parser.add_argument('url', help='GOOGLE_BOOK_OR_ID')
+    args = parser.parse_args(args)
 
-    Download a Google Book and create a PNG image for each page."""
-    parser = optparse.OptionParser(usage)
-    parser.add_option('-s', '--page-start', dest='page_start', type="int",
-                      default=1, help='Start page')
-    parser.add_option('-e', '--page-end', dest='page_end', type="int",
-                      default=None, help='End page')
-    parser.add_option('-n', '--no-redownload', dest='noredownload',
-                      action="store_true", default=False,
-                      help='Do not download pages if they exist')
-    parser.add_option('-q', '--quiet', dest='quiet',
-                      action="store_true", default=False,
-                      help='Do not print messages to the terminal')
-    options, pargs = parser.parse_args(args)
-    if not pargs:
-        parser.print_usage()
-        return 2
-
-    url = pargs[0]
+    url = args.url
     info = get_info_from_url(url)
     namespace = dict(title=info["title"], attribution=info["attribution"])
     output_directory = "%(attribution)s - %(title)s" % namespace
     lib.mkdir_p(output_directory)
 
     for page_info, page, image_data in\
-            download_book(url, options.page_start - 1, options.page_end):
+            download_book(url, args.page_start - 1, args.page_end):
         filename = "%03d.png" % (page + 1)
         output_path = os.path.join(output_directory, filename)
         if not ((os.path.isfile(output_path) and
-                 options.noredownload)):
+                 args.noredownload)):
             open(output_path, "wb").write(image_data)
-            if not options.quiet:
+            if not args.quiet:
                 print 'Downloaded {}'.format(output_path)
-        elif not options.quiet:
+        elif not args.quiet:
             print 'Output file {} exists'.format(output_path)
 
 
