@@ -175,9 +175,9 @@ def main(args):
                  args.noredownload)):
             open(output_path, "wb").write(image_data)
             if not args.quiet:
-                print 'Downloaded {}'.format(output_path)
+                print 'Downloaded {}'.format(output_path.encode('utf-8'))
         elif not args.quiet:
-            print 'Output file {} exists'.format(output_path)
+            print 'Output file {} exists'.format(output_path.encode('utf-8'))
 
 
 if __name__ == '__main__':
