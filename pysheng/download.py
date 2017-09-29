@@ -167,9 +167,9 @@ def main(args):
     info = get_info_from_url(url)
     namespace = dict(title=info["title"], attribution=info["attribution"])
     if args.output_directory:
-      output_directory = args.output_directory
+        output_directory = args.output_directory
     else:
-      output_directory = "%(attribution)s - %(title)s" % namespace
+        output_directory = "%(attribution)s - %(title)s" % namespace
     lib.mkdir_p(output_directory)
 
     for page_info, page, image_data in\
