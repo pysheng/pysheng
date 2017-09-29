@@ -155,6 +155,8 @@ def main(args):
     parser.add_argument('-n', '--no-redownload', dest='noredownload',
                         action="store_true", default=False,
                         help='Do not re-download pages if they exist locally')
+    parser.add_argument('-o', '--output-directory', dest='output_directory',
+                        default='', help='Output directory')
     parser.add_argument('-q', '--quiet', dest='quiet',
                         action="store_true", default=False,
                         help='Do not print messages to the terminal')
@@ -164,7 +166,10 @@ def main(args):
     url = args.url
     info = get_info_from_url(url)
     namespace = dict(title=info["title"], attribution=info["attribution"])
-    output_directory = "%(attribution)s - %(title)s" % namespace
+    if args.output_directory:
+      output_directory = args.output_directory
+    else:
+      output_directory = "%(attribution)s - %(title)s" % namespace
     lib.mkdir_p(output_directory)
 
     for page_info, page, image_data in\
