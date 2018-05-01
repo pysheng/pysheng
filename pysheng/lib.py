@@ -53,7 +53,8 @@ def first(iterable, pred=bool):
             return item
 
 
-def download(url, opener=None, agent='Mozilla/5.0 (X11; U; Linux x86_64)'):
+#def download(url, opener=None, agent='Mozilla/5.0 (X11; U; Linux x86_64)'):
+def download(url, opener=None, agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36'):
     """Download a URL, optionally using a urlib2.opener"""
     opener = opener or urllib2.build_opener()
     request = (url if isinstance(url, urllib2.Request) else build_request(url))
