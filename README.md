@@ -37,8 +37,6 @@ Note that in order to save a PDF you need [ReportLab](http://www.reportlab.com/s
 $ pysheng-gui
 ```
 
-http://pysheng.googlecode.com/svn/wiki/screenshot1.png
-
 Command line
 ============
 
